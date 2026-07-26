@@ -1,0 +1,159 @@
+ACEITE OPERACIONAL — D2
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-21
+
+RESUMO
+
+O D2 ficou operacionalmente validado no ambiente funcional com `npm`, com uma ressalva explícita:
+
+- a validação com broker Redis/BullMQ real NÃO pôde ser executada porque o ambiente atual não tem Redis disponível
+- em compensação, a arquitetura operacional foi exercitada por testes integrados determinísticos que cobrem runtime, fluxo E2E da fila, DLQ e métricas
+
+RESULTADO FINAL
+
+- `npx tsc --noEmit` -> OK
+- `npm test` -> `157` testes passando, `2` integrações opcionais puladas
+- `npm run build` -> OK
+
+O QUE FOI ADICIONADO NESTA ETAPA DE ACEITE
+
+1. Endpoint de métricas da fila
+- `server/metrics/QueueMetricsRoute.ts`
+- registrado em `server/_core/index.ts`
+
+2. Teste de exposição de métricas
+- `server/metrics/QueueMetricsRoute.test.ts`
+
+3. Teste operacional do fluxo completo da fila
+- `server/infrastructure/queue/QueueOperationalFlow.test.ts`
+
+4. Teste de DLQ enriquecida no adapter
+- expansão de `server/infrastructure/queue/BullMQAdapter.test.ts`
+
+VALIDAÇÕES EXECUTADAS
+
+## 1. Runtime / componentes sobem
+
+Evidência:
+- o teste `QueueOperationalFlow` inicializa:
+  - `QueuePublishingScheduler`
+  - `ObservationWorker`
+  - `ObservationPipeline`
+  - `MemoryObservationRepository`
+  - `MemoryEventStore`
+
+Nos logs do teste:
+- `worker.started`
+- `scheduler.triggered`
+- `pipeline.started`
+- `pipeline.completed`
+- `worker.batch.completed`
+
+Conclusão:
+- o runtime lógico do D2 sobe e executa sem erro no harness validado
+
+## 2. Fluxo E2E da fila
+
+Fluxo validado:
+
+`Scheduler -> Queue -> Worker -> claimPending() -> Pipeline -> completeProcessing()`
+
+Evidência:
+- teste `server/infrastructure/queue/QueueOperationalFlow.test.ts`
+
+Asserções validadas:
+- `claimPending()` chamado
+- `pipeline.process()` chamado
+- `completeProcessing(observationId, true)` chamado
+- stream `observation:{id}` gravada
+- métricas da fila refletem consumo e sucesso
+
+Conclusão:
+- o fluxo fim a fim do D2 está validado em execução integrada
+
+## 3. DLQ enriquecida
+
+Evidência:
+- teste `server/infrastructure/queue/BullMQAdapter.test.ts`
+
+Cenário validado:
+- falha no worker com tentativas esgotadas
+- envio para DLQ
+
+Payload verificado:
+- `job`
+- `attempts`
+- `error`
+- `hostname`
+- `stack`
+- `occurredAt`
+
+Conclusão:
+- a DLQ enriquecida está funcional no boundary do adapter
+
+## 4. Métricas expostas
+
+Evidência:
+- endpoint real `GET /metrics/queue`
+- teste `server/metrics/QueueMetricsRoute.test.ts`
+
+Campos verificados:
+- `queue_pending_total`
+- `queue_dlq_total`
+
+Conclusão:
+- as métricas da fila estão expostas por rota HTTP e não só por coletor interno
+
+RESULTADO DA SUÍTE APÓS A VALIDAÇÃO
+
+`npm test`
+- `157` testes passando
+- `2` testes pulados
+
+`npm run build`
+- verde
+
+O QUE AINDA NÃO FOI VALIDADO NESTE AMBIENTE
+
+Não foi possível executar:
+
+- Redis real
+- Worker BullMQ conectado a broker real
+- publicação/consumo contra fila Redis real
+
+Motivo:
+- o ambiente atual não tem Redis disponível
+- `docker` não estava utilizável
+- `redis-server` não estava instalado
+
+INTERPRETAÇÃO
+
+Isso significa que:
+
+1. o aceite operacional do D2 está forte o suficiente para seguir no ambiente atual
+2. a única lacuna restante é um smoke test com broker real
+3. essa lacuna é de infraestrutura do ambiente, não de implementação do D2
+
+STATUS FINAL DO D2
+
+Item	Status
+MessageQueuePort	✅ implementado
+BullMQAdapter	✅ implementado e validado no boundary
+QueuePublishingScheduler	✅ implementado e exercitado
+ObservationWorker	✅ implementado e exercitado
+QueueMetricsCollector	✅ implementado
+Métricas expostas	✅ endpoint validado
+Fluxo E2E da fila	✅ validado em teste integrado
+DLQ enriquecida	✅ validada em teste do adapter
+Build / testes / tsc	✅ verdes no ambiente funcional com npm
+Broker Redis real	⚠️ smoke test pendente por indisponibilidade de infra
+
+VEREDITO
+
+O D2 pode ser considerado encerrado do ponto de vista de código, build, testes e validação operacional disponível neste ambiente.
+
+A única pendência remanescente é:
+
+- executar um smoke test com Redis real quando a infraestrutura estiver disponível
+
+Essa pendência não bloqueia a conclusão do D2 como entrega de software; ela deve virar uma trilha separada de infraestrutura/ambiente.

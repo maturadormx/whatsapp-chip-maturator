@@ -1,0 +1,102 @@
+RELATÓRIO A/B — MATERIALIZAÇÃO DO NODE_MODULES
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-21
+
+OBJETIVO
+Verificar se o problema de resolução de módulos era específico do diretório atual do projeto ou se se reproduzia em um clone limpo fora dele.
+
+TESTE EXECUTADO
+
+1. Projeto original:
+- `C:\Users\AORUS\AppData\Roaming\TRAE SOLO\ModularData\ai-agent\work-mode-projects\6a54f97e29ef92b9a21a9633\whatsapp-chip-maturator`
+
+2. Clone limpo para teste:
+- `c:\Users\AORUS\.trae\work\6a54f97e29ef92b9a21a9636\whatsapp-chip-maturator-pnpm-test`
+
+3. No clone:
+- `pnpm install`
+- `require.resolve('zod/package.json')`
+- `require.resolve('drizzle-orm/package.json')`
+- `pnpm exec tsc --noEmit`
+
+RESULTADO
+
+## Instalação
+
+`pnpm install` concluiu no clone.
+
+Mas apareceu um warning importante:
+
+`Failed to create bin ... node_modules\.bin\node ... node_modules\@types\node\node.exe.EXE`
+
+Isso já sugere materialização anômala do `node_modules`.
+
+## Resolução de módulos no clone
+
+Comandos:
+
+- `fs.existsSync('./node_modules/zod/package.json')`
+- `fs.existsSync('./node_modules/drizzle-orm/package.json')`
+- `require.resolve('zod/package.json')`
+- `require.resolve('drizzle-orm/package.json')`
+
+Resultado:
+
+- `zod exists false`
+- `drizzle exists false`
+- `Cannot find module 'zod/package.json'`
+- `Cannot find module 'drizzle-orm/package.json'`
+
+## TypeScript no clone
+
+`pnpm exec tsc --noEmit`
+
+Resultado:
+
+- `TS2688: Cannot find type definition file for 'node'`
+- `TS2688: Cannot find type definition file for 'vite/client'`
+
+CONCLUSÃO PRINCIPAL
+
+O problema NÃO está restrito ao diretório original do projeto.
+
+O comportamento se reproduz em um clone limpo fora dele:
+
+- o lock está OK
+- a instalação conclui
+- mas a materialização real dos pacotes em `node_modules` continua quebrada
+
+INTERPRETAÇÃO
+
+Isso enfraquece a hipótese:
+
+- "é só o diretório atual do TRAE"
+
+E fortalece a hipótese:
+
+- há um problema de materialização do PNPM neste ambiente Windows/sessão
+- o `node_modules` final não está ficando utilizável para o Node
+
+O QUE ESSE TESTE DESCARTA
+
+- erro exclusivo do path atual do projeto
+- erro exclusivo de `tsconfig`
+- erro exclusivo do D2
+
+O QUE ESSE TESTE CONFIRMA
+
+- a prioridade ainda é ambiente / materialização de módulos
+- o `tsc` continua bloqueado por isso
+- não faz sentido voltar ao D2 ainda
+
+PRÓXIMO PASSO RECOMENDADO
+
+Como o problema se reproduz fora do diretório original, o próximo teste útil deixa de ser "mover de pasta" e passa a ser:
+
+1. isolar se o problema é específico do `pnpm` nesta máquina/sessão
+2. comparar com outro gerenciador em um diretório mínimo
+3. ou forçar outra estratégia de materialização sem depender do layout atual do `pnpm`
+
+VEREDITO
+
+O teste A/B cumpriu o papel: ele mostrou que a causa não está só no diretório atual do projeto. O bloqueio continua sendo a materialização real do `node_modules`, e a próxima investigação deve focar no comportamento do `pnpm` neste ambiente.

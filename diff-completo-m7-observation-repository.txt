@@ -1,0 +1,85 @@
+DIFF COMPLETO — M7 PERSISTÊNCIA MÍNIMA (OBSERVATION)
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-20
+
+OBJETIVO DA RODADA
+Implementar o M7 exatamente como solicitado:
+
+- criar `ObservationRepositoryPort`
+- criar `MemoryObservationRepository`
+- integrar no `ObservationPipeline` com a regra: persistir `Observation` antes de gerar `Fact`
+- política de falha: se `save()` falhar, aborta o pipeline, não gera `Fact` e o HTTP retorna `500`
+- adicionar testes de sucesso, falha e ordem
+- registrar ADR da decisão
+
+VALIDAÇÃO FINAL
+- `pnpm test` -> `131/131` testes passando
+- `pnpm build` -> `OK`
+
+ARQUIVOS NOVOS
+
+Ports:
+- `server/ports/ObservationRepositoryPort.ts`
+
+Repository (memória):
+- `server/repositories/observation/MemoryObservationRepository.ts`
+- `server/repositories/observation/MemoryObservationRepository.test.ts`
+
+ADR:
+- `docs/adr/0010-persist-observation-before-fact.md`
+
+ARQUIVOS ALTERADOS
+
+Pipeline:
+- `server/application/observation/ObservationPipeline.ts`
+- `server/application/observation/ObservationPipeline.test.ts`
+
+Inbound:
+- `server/inbound/InboundRouter.ts`
+- `server/inbound/InboundRouter.test.ts`
+
+Documentação:
+- `docs/adr/README.md`
+- `docs/architecture/contracts.md`
+- `docs/architecture/m2-traceability.md`
+
+MUDANÇA PRINCIPAL NO PIPELINE
+
+Antes:
+- pipeline gerava Fact e executava side-effect (`onFactGenerated`) sem persistência
+
+Depois:
+1. `repository.save(observation)`
+2. `createFact(observation)`
+3. `onFactGenerated(fact)`
+
+Garantias documentadas em `ObservationPipelinePort`:
+- persistência ocorre antes de qualquer transformação
+- Fact só existe se persistência tiver sucesso
+- nenhum side-effect acontece antes do save
+- erro de persistência é propagado
+
+POLÍTICA DE RETORNO HTTP
+
+- sucesso do pipeline -> `202 Accepted`
+- falha na persistência -> `500 Internal Server Error`
+
+TESTES ADICIONADOS/REFORÇADOS
+
+Pipeline:
+- ordem: `save()` ocorre antes de `createFact()` usando `invocationCallOrder`
+- falha: `save()` falha -> não chama `createFact()` nem `onFactGenerated()`
+
+Inbound:
+- endpoint retorna `500` se o pipeline falhar
+
+EVOLUÇÃO DA SUÍTE
+
+Antes:
+- `126/126`
+
+Depois:
+- `131/131`
+
+VEREDITO
+O pipeline agora possui o primeiro efeito colateral real (persistência) com disciplina explícita: `Observation` é registro canônico e é persistida antes de qualquer derivação. Isso prepara o terreno para replay/auditoria e permite evoluir para `ExecutionService` consumindo `Fact` (M8) sem que o HTTP precise conhecer o domínio interno.

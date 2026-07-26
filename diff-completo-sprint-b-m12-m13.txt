@@ -1,0 +1,187 @@
+DIFF COMPLETO — SPRINT B (M12 + M13)
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-20
+
+OBJETIVO DA RODADA
+Entregar o Sprint B real em cima da estrutura atual do projeto:
+
+1. M12 — `Scheduler`
+2. M13 — `Retry`
+3. runtime compartilhado para `Inbound`, `Scheduler` e pipeline
+4. correção do reprocessamento infinito via estado pendente/processado em `ObservationRepository`
+
+VALIDAÇÃO FINAL
+- `pnpm test` -> `146/146` testes passando
+- `pnpm build` -> `OK`
+
+ARQUIVOS NOVOS
+
+Ports:
+- `server/ports/SchedulerPort.ts`
+
+Use case:
+- `server/application/observation/ProcessPendingObservationsUseCase.ts`
+- `server/application/observation/ProcessPendingObservationsUseCase.test.ts`
+
+Scheduler:
+- `server/infrastructure/scheduler/IntervalScheduler.ts`
+- `server/infrastructure/scheduler/IntervalScheduler.test.ts`
+
+Retry:
+- `server/infrastructure/decorators/RetryExecutionServiceDecorator.ts`
+- `server/infrastructure/decorators/RetryExecutionServiceDecorator.test.ts`
+
+Runtime:
+- `server/runtime/observationRuntime.ts`
+
+Documentação:
+- `docs/adr/0012-sprint-b-scheduler-and-retry.md`
+- `docs/architecture/sprint-b-m12-m13.md`
+
+ARQUIVOS ALTERADOS
+
+- `server/ports/ObservationRepositoryPort.ts`
+- `server/repositories/observation/MemoryObservationRepository.ts`
+- `server/repositories/observation/MemoryObservationRepository.test.ts`
+- `server/application/observation/ObservationPipeline.ts`
+- `server/application/observation/ObservationPipeline.test.ts`
+- `server/_core/index.ts`
+- `docs/adr/README.md`
+- `docs/architecture/contracts.md`
+- `docs/architecture/m2-traceability.md`
+
+CAPACIDADE ENTREGUE
+
+M12 — Scheduler
+- `SchedulerPort`
+- `IntervalScheduler`
+- `ProcessPendingObservationsUseCase`
+
+Fluxo:
+- `IntervalScheduler` dispara em intervalo fixo
+- chama `ProcessPendingObservationsUseCase`
+- o caso de uso lista `Observations` pendentes
+- reenvia cada uma para o `ObservationPipeline`
+
+M13 — Retry
+- `RetryExecutionServiceDecorator`
+- encapsula `ExecutionServicePort`
+- 3 tentativas por padrão
+- atraso exponencial simples:
+  - `baseDelayMs * 2^(attempt-1)`
+
+CORREÇÃO IMPORTANTE — FIM DO REPROCESSAMENTO INFINITO
+
+Antes:
+- `ObservationRepository` apenas salvava e recuperava por id
+- o scheduler, se introduzido assim, poderia reprocessar para sempre a mesma entrada
+
+Depois:
+- `ObservationRepositoryPort` passa a expor:
+  - `listPending()`
+  - `markProcessed(id)`
+- `MemoryObservationRepository` agora guarda:
+  - `observation`
+  - `processed`
+
+Regra:
+- quando o pipeline termina com sucesso:
+  - `repository.markProcessed(observation.id)`
+
+Consequência:
+- apenas falhas reais permanecem pendentes
+- o scheduler reprocessa somente o que realmente ficou incompleto
+
+RUNTIME COMPARTILHADO
+
+Arquivo:
+- `server/runtime/observationRuntime.ts`
+
+O que ele centraliza:
+- `DevLogger`
+- `MemoryObservationRepository`
+- `MemoryEventStore`
+- `DefaultRuleEngine`
+- `DefaultExecutionService`
+- `RetryExecutionServiceDecorator`
+- `ObservationPipeline`
+- `InboundService`
+- `ProcessPendingObservationsUseCase`
+- `IntervalScheduler`
+
+Motivo:
+- `Inbound` e `Scheduler` precisam operar sobre o mesmo repositório e o mesmo pipeline
+- isso evita instâncias paralelas sem estado compartilhado
+
+INTEGRAÇÃO NO BOOTSTRAP
+
+Arquivo alterado:
+- `server/_core/index.ts`
+
+O que mudou:
+- `createObservationRuntime()` é criado no bootstrap
+- `registerInboundRoutes(app, { service: observationRuntime.inboundService })`
+- `observationRuntime.scheduler.start()`
+
+Com isso:
+- HTTP usa o pipeline compartilhado
+- scheduler roda no mesmo processo e reusa o mesmo estado
+
+DETALHES DO RETRY
+
+Arquivo:
+- `server/infrastructure/decorators/RetryExecutionServiceDecorator.ts`
+
+Comportamento:
+- tenta executar o plano até `maxAttempts`
+- em falha:
+  - registra `execution.retry.failed`
+  - espera o atraso configurado
+  - tenta de novo
+- em sucesso após retentativa:
+  - registra `execution.retry.success`
+
+NÃO FAZ AINDA:
+- retry persistido
+- dead-letter queue
+- política configurável por tipo de ação
+
+TESTES ADICIONADOS
+
+1. `ProcessPendingObservationsUseCase.test.ts`
+- processa todas as pendentes
+- continua mesmo quando uma observation falha
+
+2. `IntervalScheduler.test.ts`
+- dispara o caso de uso por intervalo
+- `stop()` interrompe novos disparos
+
+3. `RetryExecutionServiceDecorator.test.ts`
+- retenta e tem sucesso em tentativa posterior
+- falha depois de esgotar tentativas
+
+4. `MemoryObservationRepository.test.ts`
+- valida `listPending()`
+- valida `markProcessed()`
+
+5. `ObservationPipeline.test.ts`
+- validado com `markProcessed()` no sucesso
+- validado sem `markProcessed()` em falhas
+
+EVOLUÇÃO DA SUÍTE
+
+Antes:
+- `139/139`
+
+Depois:
+- `146/146`
+
+VEREDITO
+Sprint B concluído e verde. O sistema agora tem:
+
+- reprocessamento automático por `Scheduler`
+- retentativa simples por decorator
+- runtime compartilhado para `Inbound` e `Scheduler`
+- controle explícito de pendência/processamento para evitar loops infinitos
+
+O próximo passo natural é Sprint C: configuração operacional, endurecimento do scheduler e externalização do estado hoje mantido em memória.

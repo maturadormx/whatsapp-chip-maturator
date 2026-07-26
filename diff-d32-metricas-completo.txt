@@ -1,0 +1,221 @@
+D3.2 — MÉTRICAS PROMETHEUS (BLOCO COMPLETO DE CÓDIGO)
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-21
+
+RESUMO
+
+Foi aplicado o bloco completo de métricas Prometheus do D3.2 no código do projeto:
+
+1. registry singleton já existente mantido
+2. 20 métricas customizadas adicionadas
+3. instrumentação conectada em scheduler, worker, pipeline, queue e DLQ
+4. endpoint `/internal/metrics` atualizado para sincronizar gauges da fila
+5. testes ampliados para validar exposição e incremento real de métricas
+6. documentação de observabilidade atualizada
+
+VALIDAÇÃO FINAL NO CLONE COM NPM
+
+Ambiente validado:
+- `whatsapp-chip-maturator-d32full-npm-test`
+
+Resultados:
+- `npx tsc --noEmit` -> OK
+- `npm test` -> `162` testes passando, `2` pulados
+- `npm run build` -> OK
+
+ESCOPO IMPLEMENTADO
+
+## 1. Arquivos novos de métricas
+
+- `server/metrics/QueueMetrics.ts`
+- `server/metrics/PipelineMetrics.ts`
+- `server/metrics/WorkerMetrics.ts`
+- `server/metrics/SchedulerMetrics.ts`
+- `server/metrics/DlqMetrics.ts`
+- `server/metrics/OperationalMetricsFlow.test.ts`
+
+## 2. Arquivos alterados
+
+- `server/metrics/index.ts`
+- `server/infrastructure/queue/QueuePublishingScheduler.ts`
+- `server/infrastructure/queue/ObservationWorker.ts`
+- `server/application/observation/ObservationPipeline.ts`
+- `server/infrastructure/queue/BullMQAdapter.ts`
+- `server/routes/internal/metrics.ts`
+- `server/routes/internal/metrics.test.ts`
+- `server/_core/index.ts`
+- `docs/architecture/observability.md`
+
+20 MÉTRICAS EXPOSAS
+
+### Queue
+
+1. `queue_jobs_published_total`
+2. `queue_jobs_consumed_total`
+3. `queue_pending_observations`
+4. `queue_active_jobs`
+5. `queue_failed_jobs`
+6. `queue_delayed_jobs`
+7. `queue_wait_seconds`
+
+### Pipeline
+
+8. `pipeline_started_total`
+9. `pipeline_completed_total`
+10. `pipeline_failed_total`
+11. `pipeline_processing_seconds`
+
+### Worker
+
+12. `worker_jobs_processed_total`
+13. `worker_jobs_failed_total`
+14. `worker_running`
+15. `worker_batch_processing_seconds`
+
+### Scheduler
+
+16. `scheduler_runs_total`
+17. `scheduler_jobs_published_total`
+18. `scheduler_publish_failures_total`
+
+### DLQ
+
+19. `dlq_jobs_total`
+20. `dlq_current_size`
+
+O QUE FOI INSTRUMENTADO
+
+## Scheduler
+
+Arquivo:
+- `server/infrastructure/queue/QueuePublishingScheduler.ts`
+
+Métricas ligadas:
+- `scheduler_runs_total`
+- `scheduler_jobs_published_total`
+- `scheduler_publish_failures_total`
+
+## Worker
+
+Arquivo:
+- `server/infrastructure/queue/ObservationWorker.ts`
+
+Métricas ligadas:
+- `worker_running`
+- `worker_jobs_processed_total`
+- `worker_jobs_failed_total`
+- `worker_batch_processing_seconds`
+
+## Pipeline
+
+Arquivo:
+- `server/application/observation/ObservationPipeline.ts`
+
+Métricas ligadas:
+- `pipeline_started_total`
+- `pipeline_completed_total`
+- `pipeline_failed_total`
+- `pipeline_processing_seconds`
+
+## Queue / DLQ
+
+Arquivo:
+- `server/infrastructure/queue/BullMQAdapter.ts`
+
+Métricas ligadas:
+- `queue_jobs_published_total`
+- `queue_jobs_consumed_total`
+- `queue_wait_seconds`
+- `dlq_jobs_total`
+- `dlq_current_size`
+
+## Endpoint Prometheus
+
+Arquivo:
+- `server/routes/internal/metrics.ts`
+
+Mudança:
+- a rota agora aceita uma fila opcional
+- se a fila estiver disponível, sincroniza os gauges de queue/DLQ antes de renderizar o exposition format
+
+Integração no bootstrap:
+- `server/_core/index.ts` agora registra `createInternalMetricsRouter(observationRuntime.queue)`
+
+TESTES ADICIONADOS / AMPLIADOS
+
+## Rota `/internal/metrics`
+
+Arquivo:
+- `server/routes/internal/metrics.test.ts`
+
+Cobertura:
+- `200 OK`
+- `Content-Type` Prometheus
+- presença das 20 métricas customizadas
+- teste do singleton do registry
+
+## Fluxo operacional com métricas
+
+Arquivo:
+- `server/metrics/OperationalMetricsFlow.test.ts`
+
+Cobertura:
+- fluxo integrado `Scheduler -> Queue -> Worker -> Pipeline`
+- valida incremento real de:
+  - `pipeline_started_total`
+  - `pipeline_completed_total`
+  - `worker_jobs_processed_total`
+  - `scheduler_runs_total`
+  - `scheduler_jobs_published_total`
+- valida também a presença das métricas de queue no exposition format
+
+DOCUMENTAÇÃO
+
+Arquivo:
+- `docs/architecture/observability.md`
+
+Atualizações:
+- lista explícita das 20 métricas do D3.2
+- convenções de nomes
+- agrupamento por domínio observável
+
+RESULTADO PRÁTICO
+
+Após esta rodada, o endpoint:
+
+- `GET /internal/metrics`
+
+já expõe:
+
+- métricas padrão do Node.js
+- métricas customizadas de queue
+- métricas customizadas de pipeline
+- métricas customizadas de worker
+- métricas customizadas de scheduler
+- métricas customizadas de DLQ
+
+STATUS APÓS A RODADA
+
+Marco	Status
+D2	✅ concluído
+D3.1	✅ concluído
+D3.2 bloco de métricas no código	✅ concluído
+Redis real / validação operacional completa	⚠️ ainda depende de infraestrutura
+Grafana / Alertmanager / docker stack	⏳ ainda não aplicados nesta rodada
+
+VEREDITO
+
+O bloco de código do D3.2 ficou implementado e validado no ambiente funcional com `npm`.
+
+O que já está efetivamente pronto:
+
+- 20 métricas expostas em `/internal/metrics`
+- testes verdes
+- build verde
+- instrumentação conectada aos componentes principais
+
+O que fica para a próxima rodada, se você quiser continuar:
+
+- stack de operação (`docker-compose`, `prometheus.yml`, Grafana, Alertmanager)
+- scripts/checklists do Sprint 0
+- validação real com Redis/BullMQ e `curl /internal/metrics`

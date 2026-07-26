@@ -1,0 +1,29 @@
+{
+  "datasetId": "synthetic-entra-em-grupo",
+  "description": "Entrada e navegação em grupo.",
+  "replayedAt": "2026-07-16T18:00:00.000Z",
+  "rawEvents": [
+    {
+      "eventType": "group_joined",
+      "source": "synthetic_system",
+      "direction": "system",
+      "occurredAt": "2026-07-16T14:00:00.000Z",
+      "remoteJid": null,
+      "remoteType": "group",
+      "remoteLabel": "Contato Sintético",
+      "groupJid": "120363000000100@g.us",
+      "groupSubject": "Grupo Sintético"
+    },
+    {
+      "eventType": "group_opened",
+      "source": "synthetic_system",
+      "direction": "system",
+      "occurredAt": "2026-07-16T14:05:00.000Z",
+      "remoteJid": null,
+      "remoteType": "group",
+      "remoteLabel": "Contato Sintético",
+      "groupJid": "120363000000100@g.us",
+      "groupSubject": "Grupo Sintético"
+    }
+  ]
+}

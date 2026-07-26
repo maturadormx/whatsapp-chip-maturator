@@ -1,0 +1,64 @@
+VALIDAÇÃO OPERACIONAL DA FASE 1
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-20
+
+OBJETIVO
+Encerrar a Fase 1 com uma validação integrada do núcleo operacional, sem enquadrar o teste como E2E completo de provedor externo.
+
+ESCOPO VALIDADO
+- Policy
+- ExecutionService
+- Execution Ledger
+- RetryService
+- BudgetReservationService
+- compatibilidade com projeção operacional consumida pelo painel
+
+O QUE O TESTE COBRE
+Fluxo validado:
+
+Policy
+  ↓
+ExecutionService
+  ↓
+Execution Ledger
+  ↓
+RetryService
+  ↓
+Budget Reservation
+  ↓
+Ledger final consumível pelo painel
+
+CENÁRIO VALIDADO
+1. uma decisão aprovada gera execução persistida
+2. a primeira tentativa reserva budget e entra em `SENDING`
+3. o envio falha e a execução vai para `FAILED`
+4. a reserva do budget é liberada
+5. o `RetryService` encontra a execução elegível
+6. a execução entra em `RETRYING`
+7. a segunda tentativa reserva budget novamente
+8. o envio é concluído com `ACKED`
+9. o budget é `COMMITTED`
+10. o ledger final fica consistente para consumo operacional
+
+CRITÉRIOS SATISFEITOS
+- `executionId` permanece estável
+- `attempt` é monotônico
+- retry só ocorre sobre `FAILED` recuperável
+- reserva falhada termina em `RELEASED`
+- reserva bem-sucedida termina em `COMMITTED`
+- o estado final do ledger é coerente com o fluxo da tentativa
+- os eventos emitidos preservam a ordem operacional esperada
+
+ARQUIVO DE TESTE
+- `server/services/behavior/phase1OperationalIntegration.test.ts`
+
+RESULTADO DA VALIDAÇÃO
+- `pnpm test` -> 70/70 testes passando
+- `pnpm build` -> OK
+
+ENQUADRAMENTO
+Este teste NÃO representa ainda um E2E completo com gateway e inbound reais.
+Ele representa a validação integrada da Fase 1, isto é, do núcleo operacional interno que já foi implementado nesta etapa.
+
+CONCLUSÃO
+A Fase 1 pode ser considerada validada do ponto de vista operacional interno e está pronta para fechamento formal e abertura da Fase 2.

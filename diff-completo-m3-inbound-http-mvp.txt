@@ -1,0 +1,149 @@
+DIFF COMPLETO — M3 INBOUND HTTP MVP
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-20
+
+OBJETIVO DA RODADA
+Executar o primeiro incremento real de `Inbound` respeitando a estrutura já existente do projeto, sem inventar diretórios paralelos, sem assumir framework diferente do runtime atual e sem misturar persistência ou orquestração de domínio nesta primeira etapa.
+
+VALIDAÇÃO FINAL
+- `pnpm test` -> `123/123` testes passando
+- `pnpm build` -> `OK`
+
+TASK-000 — LEITURA REAL DA BASE
+
+Antes de implementar, a estrutura do projeto foi verificada.
+
+Conclusões importantes:
+- runtime HTTP real: `Express`
+- entrypoint do servidor: `server/_core/index.ts`
+- registro de middleware/rotas já acontece no bootstrap do `Express`
+- portanto, o encaixe correto do `Inbound` é:
+  - `server/inbound/...`
+  - registro em `server/_core/index.ts`
+
+Decisão importante:
+- não foi criada árvore nova em `src/`
+- não foi assumido `Nest`, `Fastify` ou outro framework
+- a implementação respeita o esqueleto real do repositório
+
+TASK-001.1 — INBOUND HTTP MVP
+
+Arquivos criados:
+- `server/inbound/dto/InboundEventDto.ts`
+- `server/inbound/InboundService.ts`
+- `server/inbound/InboundRouter.ts`
+- `server/inbound/index.ts`
+- `server/inbound/InboundRouter.test.ts`
+
+Arquivo alterado:
+- `server/_core/index.ts`
+
+O que foi entregue:
+
+1. DTO validado com `zod`
+- `source` obrigatório
+- `eventType` opcional
+- `payload` opcional
+- `correlationId` opcional
+- `timestamp` opcional
+
+2. `InboundService` placeholder
+- aceita um evento válido
+- responde com:
+  - `status: "accepted"`
+  - `id`
+
+Importante:
+- nesta etapa não há regra de negócio
+- não há roteamento para `Fact`
+- não há `Policy`
+- não há gravação em `Event Store`
+
+3. `InboundRouter`
+- registra:
+  - `POST /api/inbound/events`
+- retorna:
+  - `400` para payload inválido
+  - `202` para payload válido
+
+4. Registro no runtime real
+- `registerInboundRoutes(app)` foi acoplado ao bootstrap do `Express` em `server/_core/index.ts`
+
+DECISÕES ARQUITETURAIS IMPORTANTES
+
+1. Endpoint mínimo
+- esta rodada cria só a camada HTTP de entrada
+- nenhuma regra de domínio foi deslocada para o endpoint
+
+2. Placeholder explícito
+- `InboundService` existe para marcar a fronteira do módulo
+- ainda não é orchestrator, policy nem adapter para Event Store
+
+3. Compatibilidade com a baseline 2.0
+- `Inbound` entra como camada periférica
+- o núcleo protegido continua intacto:
+  - `ExecutionService`
+  - `RetryService`
+  - `MessageGateway`
+  - `Clock`
+  - `BehaviorActionLedgerRepository`
+
+TESTES
+
+Arquivo criado:
+- `server/inbound/InboundRouter.test.ts`
+
+Casos cobertos:
+- payload válido -> `202`
+- payload inválido -> `400`
+
+Impacto na suíte:
+- antes desta rodada: `121/121`
+- depois desta rodada: `123/123`
+
+DOCUMENTAÇÃO
+
+Arquivo criado:
+- `docs/architecture/m3-inbound-http-mvp.md`
+
+Arquivo atualizado:
+- `docs/architecture/m2-traceability.md`
+
+O que a documentação registra:
+- objetivo do MVP
+- escopo incluído
+- escopo excluído
+- estrutura adotada
+- decisão explícita de respeitar a estrutura real do projeto
+- próximo passo natural:
+  - `Layer B` do Inbound
+  - ou `Event Store`
+
+O QUE NÃO FOI FEITO DE PROPÓSITO
+- `Event Store`
+- roteamento por tipo de evento
+- mapping para `Fact`
+- autenticação ou assinatura de webhook
+- feature flags por evento
+- orquestração de domínio
+- `scheduler`
+
+Motivo:
+- esta rodada foi mantida no menor recorte executável e verificável
+- o objetivo era provar o encaixe do módulo, não abrir toda a Fase 3 de uma vez
+
+ARQUIVOS IMPACTADOS
+- `server/inbound/dto/InboundEventDto.ts`
+- `server/inbound/InboundService.ts`
+- `server/inbound/InboundRouter.ts`
+- `server/inbound/index.ts`
+- `server/inbound/InboundRouter.test.ts`
+- `server/_core/index.ts`
+- `docs/architecture/m3-inbound-http-mvp.md`
+- `docs/architecture/m2-traceability.md`
+
+VEREDITO
+Esta rodada materializa corretamente o `Inbound HTTP MVP` na estrutura real do projeto. O módulo entra pelo runtime atual (`Express`), com validação de entrada, serviço placeholder e documentação/rastreabilidade coerentes, sem forçar arquitetura paralela nem contaminar o núcleo protegido. O próximo passo natural é decidir entre:
+
+1. `Layer B` do Inbound: mapear evento válido para `Fact` / comando interno
+2. `Event Store`: persistência da entrada antes de qualquer decisão de domínio

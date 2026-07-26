@@ -1,0 +1,246 @@
+DIFF COMPLETO DO MARCO DE BLINDAGEM
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-20
+
+OBJETIVO
+Executar o pacote de blindagem sugerido no arquivo enviado:
+- fingerprint de política
+- execution trace com PASS / FAIL / SKIPPED
+- dispatcher simples para eventos de avaliação
+- adaptação do logger para usar o dispatcher
+- testes de contrato, propriedades e regressão
+- exposição do fingerprint no painel
+
+RESULTADO FINAL
+- O núcleo de decisão ficou mais auditável sem quebrar o runtime atual.
+- O logger passou a trabalhar em cima de evento de política, não só de chamada direta.
+- O engine agora devolve fingerprint e trace ordenado.
+- O painel consegue mostrar também o fingerprint aplicado.
+- O projeto segue compilando e todos os testes continuam verdes.
+
+VALIDAÇÃO
+- `pnpm test` -> OK
+- `19` arquivos de teste
+- `55` testes passando
+- `pnpm build` -> OK
+
+ARQUIVOS ALTERADOS
+
+1. `server/services/behavior/types.ts`
+O que mudou:
+- Adicionei `BehaviorPolicyCheckStatus = "PASS" | "FAIL" | "SKIPPED"`.
+- Expandi `BehaviorPolicyCheck` com:
+  - `status`
+  - `order`
+- Criei `BehaviorPolicyFingerprint`.
+- Ajustei `BehaviorPolicyContributor`:
+  - saiu a ideia de `weight` estático
+  - entrou `order`
+  - entrou `status`
+- Expandi `BehaviorPolicyEvaluation` com:
+  - `executionTrace`
+  - `fingerprint`
+  - mantendo `checks` para compatibilidade com o que já existia
+
+Efeito prático:
+- O motor agora carrega um trace ordenado e explícito da avaliação.
+- O runtime e o painel não perderam compatibilidade com a estrutura anterior.
+
+2. `server/services/behavior/behaviorPolicyConfig.ts`
+O que mudou:
+- Adicionei `crypto`.
+- Criei:
+  - `getBehaviorPolicyVersion(config)`
+  - `getBehaviorPolicyHash(config)`
+- Passei a suportar uma versão de política declarada no JSON.
+
+Efeito prático:
+- O projeto agora distingue versão do engine e estado efetivo da política.
+- Mudança em regra deixa rastros sem depender só de versão de código.
+
+3. `server/services/behavior/behaviorPolicyEngine.ts`
+O que mudou:
+- Mantive `evaluateBehaviorPolicy(...)`, sem quebrar o contrato principal.
+- Adicionei:
+  - construção do fingerprint
+  - `executionTrace` ordenado
+  - checks com `PASS`, `FAIL` e `SKIPPED`
+  - contributors derivados do trace
+- Refatorei a avaliação para short-circuit explícito:
+  - após o primeiro `FAIL`, as validações restantes viram `SKIPPED`
+- Para casos aprovados:
+  - `nextCheckAt` deixou de ser `null`
+  - agora aponta para o próximo momento recomendado
+
+Efeito prático:
+- A decisão deixou de ser apenas um resultado; passou a ser uma trilha legível da execução.
+- Isso melhora teste, auditoria, suporte e leitura do painel.
+
+4. `server/services/behavior/dispatcher.ts`
+O que mudou:
+- Arquivo novo.
+- Criei:
+  - `onPolicyEvaluated(handler)`
+  - `notifyPolicyEvaluated(decision, context)`
+- O dispatcher é simples e síncrono/awaitable.
+
+Efeito prático:
+- O núcleo não precisa mais conhecer diretamente o destino dos eventos.
+- O projeto ganhou um ponto barato de expansão para métricas e telemetria futura.
+
+5. `server/services/behavior/logger.ts`
+O que mudou:
+- O logger passou a se registrar como handler do dispatcher.
+- Criei `ensurePolicyLoggerRegistered()`.
+- Mantive `logPolicyDecision(...)`, mas agora ele delega para `notifyPolicyEvaluated(...)`.
+- O console log agora inclui também:
+  - `policyFingerprint`
+- O payload persistido passou a levar:
+  - fingerprint
+  - executionTrace
+  - checks
+  - contributors
+
+Efeito prático:
+- O logger não fica mais amarrado ao ponto de chamada.
+- O desenho ficou mais desacoplado sem precisar de Event Bus pesado.
+
+6. `drizzle/schema.ts`
+O que mudou:
+- Adicionei `policyFingerprint` em:
+  - `behavior_decision_log`
+  - `behavior_snapshots`
+
+Efeito prático:
+- O banco passou a guardar explicitamente qual fingerprint de política gerou a decisão.
+
+7. `server/db.ts`
+O que mudou:
+- Atualizei a criação das tabelas observáveis para incluir `policyFingerprint`.
+- Ajustei os helpers:
+  - `createBehaviorDecisionLog(...)`
+  - `upsertBehaviorSnapshot(...)`
+- Passei a persistir `policyFingerprint`.
+- Adicionei `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` nas ensures das tabelas de observabilidade.
+
+Efeito prático:
+- O runtime não depende apenas da migration ideal; ele tolera melhor base já existente.
+- Logs e snapshots agora carregam a identidade da política usada.
+
+8. `drizzle/0005_behavior_policy_fingerprint.sql`
+O que mudou:
+- Arquivo novo.
+- Adiciona `policyFingerprint` em:
+  - `behavior_decision_log`
+  - `behavior_snapshots`
+
+Efeito prático:
+- A mudança também ficou representada como migration explícita.
+
+9. `server/operational-rules.json`
+O que mudou:
+- Adicionei:
+  - `"version": "2026.07.20"`
+  dentro de `maturation.policy`
+
+Efeito prático:
+- Agora a política tem uma versão humana declarada, além do hash derivado.
+
+10. `client/src/pages/ControlCenter.tsx`
+O que mudou:
+- Adicionei um `StatMini` para exibir `Policy`.
+- O valor usa:
+  - `behaviorSnapshot.policyFingerprint`
+  - ou `latestBehaviorDecision.policyFingerprint`
+
+Efeito prático:
+- O painel mostra não só o engine, mas também a identidade da política aplicada.
+
+11. `server/services/behavior/behaviorPolicyEngine.test.ts`
+O que mudou:
+- Ajustei os testes existentes para a nova semântica:
+  - checks posteriores podem virar `SKIPPED`
+  - `nextCheckAt` em `ALLOW` agora é futuro, não `null`
+  - fingerprint passou a ser validado
+  - `executionTrace` passou a ser validado
+
+Efeito prático:
+- A suíte antiga continua útil e passou a cobrir o novo modelo.
+
+ARQUIVOS NOVOS DE TESTE
+
+12. `tests/behavior/contracts/policyContracts.test.ts`
+O que cobre:
+- Birth nunca inicia outbound
+- Risco crítico nunca aprova execução
+- Budget esgotado nunca retorna ALLOW
+- Toda decisão tem fingerprint
+- Todo BLOCK tem reason e ao menos um FAIL
+- Todo ALLOW tem `nextCheckAt` futuro
+- `SKIPPED` só aparece depois do primeiro FAIL
+- O trace contém todas as regras exatamente uma vez
+
+Efeito prático:
+- Entrou uma suíte de contratos do motor, não só testes de cenário.
+
+13. `tests/behavior/contracts/policyProperties.test.ts`
+O que cobre:
+- propriedade booleana de decisão
+- ausência de regras duplicadas no trace
+- FAIL coerente com reason
+- regra estrutural de `SKIPPED`
+- cardinalidade do trace
+- latência baixa em cenário determinístico
+- BLOCK sempre com algum FAIL
+
+Efeito prático:
+- O pacote ganhou verificações de invariantes estruturais, não só exemplos.
+
+14. `tests/behavior/regressions/issue-017-birth-threshold.test.ts`
+O que cobre:
+- boundary exato da fase `birth` na regra atual do projeto
+- valida que `trustScore = 20` continua em `birth`
+
+Efeito prático:
+- Um bug clássico de threshold voltou a ficar protegido por teste dedicado.
+
+15. `tests/behavior/regressions/issue-021-budget-zero.test.ts`
+O que cobre:
+- boundary de orçamento saturado
+- garante bloqueio sem erro textual ou comportamento estranho
+
+Efeito prático:
+- Protege a engine contra regressões de orçamento em casos de fronteira.
+
+DECISÕES DE PROJETO QUE EU MANTIVE
+- Mantive `evaluateBehaviorPolicy(...)` como entrada principal.
+- Mantive `checks` no retorno para não quebrar o que já existe.
+- Não introduzi CQRS, Event Bus pesado, Kafka ou refactor de larga escala.
+- O dispatcher ficou intencionalmente simples.
+
+O QUE MUDOU NO COMPORTAMENTO REAL
+- O trace de avaliação agora é ordenado e explícito.
+- Depois de um bloqueio, o restante da avaliação aparece como `SKIPPED`.
+- Decisões aprovadas carregam `nextCheckAt`.
+- Logs e snapshots agora carregam `policyFingerprint`.
+- O painel consegue mostrar qual política estava ativa.
+
+LISTA CONSOLIDADA DOS ARQUIVOS IMPACTADOS
+- `server/services/behavior/types.ts`
+- `server/services/behavior/behaviorPolicyConfig.ts`
+- `server/services/behavior/behaviorPolicyEngine.ts`
+- `server/services/behavior/dispatcher.ts`
+- `server/services/behavior/logger.ts`
+- `drizzle/schema.ts`
+- `server/db.ts`
+- `drizzle/0005_behavior_policy_fingerprint.sql`
+- `server/operational-rules.json`
+- `client/src/pages/ControlCenter.tsx`
+- `server/services/behavior/behaviorPolicyEngine.test.ts`
+- `tests/behavior/contracts/policyContracts.test.ts`
+- `tests/behavior/contracts/policyProperties.test.ts`
+- `tests/behavior/regressions/issue-017-birth-threshold.test.ts`
+- `tests/behavior/regressions/issue-021-budget-zero.test.ts`
+
+VEREDITO
+O que foi feito aqui não adiciona complexidade estrutural desnecessária. Ele endurece o núcleo e melhora a observabilidade do que já existe. O motor agora está mais próximo de uma plataforma de decisão auditável, com fingerprint, trace, contratos e regressões explícitas.

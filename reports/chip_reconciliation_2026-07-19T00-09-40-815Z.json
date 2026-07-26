@@ -1,0 +1,20 @@
+{
+  "generated_at": "2026-07-19T00:09:40.815Z",
+  "total_chips": 10,
+  "severity": {
+    "critical": 0,
+    "important": 0,
+    "informative": 0
+  },
+  "report": {
+    "scope": "fleet",
+    "reconciled_chips": 10,
+    "divergences_found": 0,
+    "chips_without_official_stream": [],
+    "streams_without_projection": [],
+    "projections_inconsistent_with_replay": [],
+    "legacy_official_divergences": [],
+    "streams_checked": 0,
+    "projections_checked": 0
+  }
+}

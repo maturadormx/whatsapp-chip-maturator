@@ -1,0 +1,252 @@
+DIFF COMPLETO DO QUE FOI FEITO
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-20
+
+OBJETIVO
+Implementar o pacote principal de confiabilidade e observabilidade da política comportamental:
+- Explain Mode interno no retorno do engine
+- testes unitários dedicados do behaviorPolicyEngine
+- BehaviorDecisionLog
+- BehaviorSnapshot
+- logPolicyDecision()
+- painel básico com fase atual, última decisão e próximo check
+- TXT consolidado com o diff do trabalho
+
+RESUMO DO RESULTADO
+- O BehaviorPolicyEngine agora retorna a decisão com árvore interna de checks.
+- O projeto ganhou persistência para decisão e snapshot comportamental.
+- O runtime real passou a registrar decisões estruturadas da política.
+- O Control Center passou a mostrar fase, última decisão, próximo check e histórico recente.
+- Foram adicionados testes unitários específicos do engine.
+- Build e testes passaram ao final.
+
+VALIDAÇÃO FINAL
+- pnpm test -> OK
+- 19 arquivos de teste
+- 55 testes
+- pnpm build -> OK
+
+ARQUIVOS NOVOS
+
+1. server/services/behavior/behaviorPolicyEngine.test.ts
+O que foi feito:
+- Criei a suíte dedicada do engine de política comportamental.
+- Cobri os blocos mais importantes:
+  - bloqueio por fase
+  - bloqueio por risco crítico
+  - cooldown com remainingMs
+  - orçamento diário
+  - reciprocidade/inbound obrigatório
+  - cenário aprovado
+  - cenário do_nothing com explain mode
+
+Efeito prático:
+- Agora existe um conjunto de testes voltado especificamente para o núcleo de decisão.
+- O engine deixou de depender apenas de validação indireta via integração.
+
+2. server/services/behavior/logger.ts
+O que foi feito:
+- Criei `logPolicyDecision()`.
+- A função:
+  - formata a decisão para console
+  - persiste em `behavior_decision_log`
+  - atualiza `behavior_snapshots`
+- Também criei `formatPolicyDecisionForConsole()`.
+
+Efeito prático:
+- O sistema ganhou um ponto único para registrar decisões da política.
+- Fica muito mais simples trocar depois o destino do log sem espalhar lógica.
+
+3. drizzle/0004_behavior_observatory.sql
+O que foi feito:
+- Criei a migration para:
+  - `behavior_decision_log`
+  - `behavior_snapshots`
+
+Efeito prático:
+- A nova camada de observabilidade ficou formalizada também em migration SQL.
+
+ARQUIVOS ALTERADOS
+
+4. server/services/behavior/types.ts
+O que foi feito:
+- Expandi os tipos da política comportamental.
+- Adicionei:
+  - `BehaviorPolicyCheckRule`
+  - `BehaviorPolicyCheck`
+  - `BehaviorPolicyChecks`
+  - `BehaviorPolicyContributor`
+- `BehaviorPolicyEvaluation` agora também inclui:
+  - `checks`
+  - `contributors`
+
+Efeito prático:
+- O retorno do engine passou a ser explicável.
+- Testes, logs e painel podem consumir a mesma estrutura.
+
+5. server/services/behavior/behaviorPolicyEngine.ts
+O que foi feito:
+- Adicionei `BEHAVIOR_POLICY_ENGINE_VERSION = "2.1.0"`.
+- Introduzi construção explícita dos checks:
+  - `phase`
+  - `risk`
+  - `cooldown`
+  - `budget`
+  - `reciprocity`
+  - `session`
+- Adicionei lista de contributors com impacto por regra.
+- O engine agora devolve a decisão com explain mode embutido.
+- Mantive a lógica central, mas formalizei a explicação do porquê de cada PASS/FAIL.
+- A ordem efetiva de decisão ficou consistente e observável.
+
+Efeito prático:
+- Antes a decisão retornava basicamente allowed/reason/delay.
+- Agora a decisão retorna também o diagnóstico estrutural do que passou e do que falhou.
+- Isso reduz muito o custo de debug e aumenta a testabilidade.
+
+6. drizzle/schema.ts
+O que foi feito:
+- Adicionei a tabela `behavior_decision_log`.
+- Adicionei a tabela `behavior_snapshots`.
+- Criei também os tipos inferidos:
+  - `BehaviorDecisionLog`
+  - `InsertBehaviorDecisionLog`
+  - `BehaviorSnapshot`
+  - `InsertBehaviorSnapshot`
+
+Efeito prático:
+- O schema Drizzle passou a refletir a nova camada de observabilidade comportamental.
+
+7. server/db.ts
+O que foi feito:
+- Importei as novas tabelas:
+  - `behaviorDecisionLog`
+  - `behaviorSnapshots`
+- Adicionei flags internas:
+  - `_behaviorDecisionLogTableEnsured`
+  - `_behaviorSnapshotsTableEnsured`
+- Criei:
+  - `ensureBehaviorDecisionLogTable()`
+  - `ensureBehaviorSnapshotsTable()`
+- Criei funções de persistência/consulta:
+  - `createBehaviorDecisionLog(...)`
+  - `upsertBehaviorSnapshot(...)`
+  - `getLatestBehaviorDecisionLog(...)`
+  - `listBehaviorDecisionLogs(...)`
+  - `getBehaviorSnapshot(...)`
+
+Efeito prático:
+- A aplicação passou a conseguir persistir e ler decisões e snapshots sem depender de código solto.
+- O backend ficou com API de dados suficiente para painel e observabilidade.
+
+8. server/services/maturationEngine.ts
+O que foi feito:
+- Integrei `logPolicyDecision()` no ponto real de avaliação da maturação.
+- Toda vez que a engine calcula a política antes do envio, a decisão pode ser logada e o snapshot pode ser atualizado.
+
+Efeito prático:
+- As decisões operacionais reais da maturação agora alimentam o observatório comportamental.
+- O painel passa a mostrar dados vivos, não só estrutura parada.
+
+9. server/scheduled/maturationHeartbeat.ts
+O que foi feito:
+- Integrei `logPolicyDecision()` também no precheck do heartbeat quando a política bloqueia.
+
+Efeito prático:
+- Bloqueios ocorridos no scheduler também entram para histórico.
+- Isso ajuda a responder perguntas como:
+  - por que o chip não agiu?
+  - por que ficou aguardando?
+
+10. server/services/controlCenterService.ts
+O que foi feito:
+- Passei a carregar no `getChipDetail()`:
+  - `latestBehaviorDecision`
+  - `behaviorSnapshot`
+  - `recentBehaviorDecisions`
+- Atualizei o tipo `ControlCenterChipDetail` para incluir esses campos.
+
+Efeito prático:
+- O Control Center ganhou backend suficiente para mostrar observabilidade comportamental sem criar endpoints paralelos desnecessários.
+
+11. client/src/pages/ControlCenter.tsx
+O que foi feito:
+- Ampliei a aba `summary` do detalhe do chip.
+- Adicionei cartões para:
+  - fase atual
+  - última decisão
+  - próximo check
+  - engine
+- Adicionei campos operacionais de snapshot:
+  - trust
+  - risk
+  - budget
+  - reciprocidade
+- Adicionei um card de:
+  - última decisão da política
+  - checks do explain mode
+- Adicionei uma mini timeline de decisões recentes.
+
+Efeito prático:
+- O painel básico pedido passou a existir no lugar certo: dentro do detalhe do chip.
+- A tela agora responde diretamente:
+  - em que fase o chip está
+  - qual foi a última decisão
+  - por que essa decisão foi tomada
+  - quando haverá nova tentativa
+
+O QUE FOI ENTREGUE FUNCIONALMENTE
+- Explain Mode interno no engine
+- Testes unitários dedicados do engine
+- Decision log persistido
+- Snapshot persistido
+- Logger central
+- Painel básico com última decisão
+- Timeline curta de decisões no detalhe do chip
+
+O QUE MUDOU NO COMPORTAMENTO DO SISTEMA
+- O engine ficou mais diagnosticável.
+- O runtime real agora registra a decisão em vez de apenas agir ou não agir.
+- O painel administrativo passou a ter contexto comportamental explícito.
+- O backend passou a preservar o estado atual do chip e o histórico curto de decisão.
+
+O QUE NÃO FOI FEITO NESTE PACOTE
+- Simulador completo de 30–90 dias
+- métricas agregadas amplas por frota
+- refactor event-driven completo
+
+MOTIVO
+- Foquei no núcleo imediato e operacional do plano:
+  confiabilidade + observabilidade + visibilidade.
+- Isso entrega valor real agora e preserva estabilidade arquitetural.
+
+ORDEM LÓGICA DO PACOTE ENTREGUE
+1. Expansão do contrato do engine (`checks`, `contributors`)
+2. Testes unitários do engine
+3. Persistência de log e snapshot
+4. Logger central
+5. Integração no runtime real
+6. Exposição no painel
+
+LISTA RESUMIDA DOS ARQUIVOS IMPACTADOS
+- server/services/behavior/types.ts
+- server/services/behavior/behaviorPolicyEngine.ts
+- server/services/behavior/behaviorPolicyEngine.test.ts
+- server/services/behavior/logger.ts
+- drizzle/schema.ts
+- drizzle/0004_behavior_observatory.sql
+- server/db.ts
+- server/services/maturationEngine.ts
+- server/scheduled/maturationHeartbeat.ts
+- server/services/controlCenterService.ts
+- client/src/pages/ControlCenter.tsx
+
+VEREDITO
+O projeto saiu de uma política centralizada porém ainda opaca para uma política:
+- centralizada
+- testada
+- explicável
+- persistida
+- visível no painel
+
+Esse pacote fecha bem a camada base de observabilidade comportamental sem quebrar o runtime existente.

@@ -1,0 +1,34 @@
+{
+  "datasetId": "synthetic-ignora-mensagens",
+  "description": "Recebe mensagens e não responde.",
+  "replayedAt": "2026-07-16T18:00:00.000Z",
+  "rawEvents": [
+    {
+      "eventType": "message_received",
+      "source": "messages.upsert",
+      "direction": "inbound",
+      "occurredAt": "2026-07-16T11:00:00.000Z",
+      "remoteJid": "5511999999999@s.whatsapp.net",
+      "remoteType": "contact",
+      "remoteLabel": "Contato Sintético"
+    },
+    {
+      "eventType": "message_received",
+      "source": "messages.upsert",
+      "direction": "inbound",
+      "occurredAt": "2026-07-16T11:08:00.000Z",
+      "remoteJid": "5511999999999@s.whatsapp.net",
+      "remoteType": "contact",
+      "remoteLabel": "Contato Sintético"
+    },
+    {
+      "eventType": "chat_list_opened",
+      "source": "synthetic_system",
+      "direction": "system",
+      "occurredAt": "2026-07-16T11:10:00.000Z",
+      "remoteJid": null,
+      "remoteType": null,
+      "remoteLabel": "Contato Sintético"
+    }
+  ]
+}

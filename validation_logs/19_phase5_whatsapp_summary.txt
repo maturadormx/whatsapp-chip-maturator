@@ -1,0 +1,15 @@
+phase5=partial_real_validation
+gateway=baileys_real
+queue_enabled=false
+scheduler_enabled=false
+redis_configured=false
+create_and_connect_chip_request=ok
+chip_created_id=1
+chip_name=Chip Teste Homologacao
+chip_status_after_create=desconectado
+qr_polling_endpoint=whatsapp.getQRCode
+qr_ready_in_frontend=yes
+qr_visible_in_ui=yes
+console_errors=none_observed
+next_gate=user_must_scan_qr_with_whatsapp
+send_receive_real=blocked_until_scan

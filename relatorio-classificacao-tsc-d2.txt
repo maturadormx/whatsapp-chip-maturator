@@ -1,0 +1,122 @@
+RELATÓRIO — CLASSIFICAÇÃO INICIAL DO TSC
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-21
+
+OBJETIVO
+Separar:
+
+1. erros de resolução de módulo / ambiente
+2. erros reais de TypeScript do código legado
+3. erros potencialmente introduzidos pelo D2
+
+O QUE FOI VALIDADO
+
+1. `pnpm list` mostra os pacotes no grafo:
+- `typescript`
+- `vite`
+- `@types/node`
+- `esbuild`
+- `zod`
+- `drizzle-orm`
+
+2. `tsconfig.json` foi corrigido:
+- `tsBuildInfoFile` saiu de `node_modules`
+- agora usa `./tsconfig.tsbuildinfo`
+
+3. `pnpm exec tsc --noEmit` ainda falha
+
+ACHADO MAIS IMPORTANTE
+
+Mesmo com `pnpm list zod` e `pnpm list drizzle-orm` retornando OK, o comando abaixo falhou:
+
+`node -e "console.log(require.resolve('zod/package.json'))"`
+
+Erro:
+- `MODULE_NOT_FOUND`
+
+INTERPRETAÇÃO
+
+Isso prova que o problema de `Cannot find module` ainda NÃO é apenas do TypeScript.
+Ainda existe inconsistência real na materialização do `node_modules`.
+
+Em outras palavras:
+
+- o lock/grafo do PNPM conhece o pacote
+- mas o Node não consegue resolver o pacote no filesystem efetivo do projeto
+
+CLASSIFICAÇÃO ATUAL DOS ERROS
+
+## Categoria 1 — resolução de módulos / ambiente
+
+Exemplos:
+- `Cannot find module 'zod'`
+- `Cannot find module 'drizzle-orm'`
+
+Status:
+- ainda bloqueante
+- deve ser resolvida antes de tratar o resto como “apenas dívida de strict”
+
+## Categoria 2 — dívida legada de strict
+
+Exemplos visíveis:
+- `TS7006` (`implicit any`)
+- `TS7031` (binding element implicit any)
+- `TS7053` (indexação implícita / any)
+
+Arquivos muito afetados:
+- `server/routers/chips.ts`
+- `server/services/runtimeSupervisorService.ts`
+- `server/services/controlCenterService.ts`
+- `server/services/behaviorMemoryShadowService.ts`
+
+Leitura:
+- altamente provável de serem erros pré-existentes do legado
+
+## Categoria 3 — tipos reais / possíveis regressões
+
+Exemplos:
+- `TS2345` em `server/services/behavior/executionService.ts`
+- `TS2339` em `server/services/maturationEngine.ts`
+- `TS18047` em `server/services/behaviorPlannerService.ts`
+- `TS18046` em `server/routers/chips.ts`
+
+Leitura:
+- estes merecem revisão posterior
+- mas não são o primeiro alvo enquanto o ambiente ainda não resolve módulos corretamente
+
+## Categoria 4 — configuração do compilador
+
+Exemplo:
+- `TS2802` em `server/services/behavior/behaviorQueries.ts`
+
+Leitura:
+- indica falta de `target` explícito suficientemente moderno no `tsconfig`
+- isso é ajuste de configuração, não falha do domínio
+
+CONCLUSÃO
+
+Ainda não é hora de concluir o D2.
+Também ainda não é hora de atacar centenas de `implicit any`.
+
+O primeiro bloqueio real continua sendo:
+
+1. materialização inconsistente do `node_modules`
+2. alguns pontos de configuração do `tsconfig`
+
+PRÓXIMA ORDEM SEGURA
+
+1. resolver definitivamente `Cannot find module`
+2. ajustar o `tsconfig` onde houver falha estrutural (ex.: `target`)
+3. rodar `pnpm exec tsc --noEmit` de novo
+4. só então separar:
+   - legado
+   - regressões do D2
+
+VEREDITO
+
+O diagnóstico ficou mais forte:
+
+- o ambiente melhorou
+- mas ainda não está totalmente consistente
+- o grupo `Cannot find module` continua sendo prioridade 1
+

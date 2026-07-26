@@ -1,0 +1,166 @@
+DIFF COMPLETO — FASE 2 / COMMIT 1 / ABSTRAÇÃO MESSAGEGATEWAY
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-20
+
+OBJETIVO DA RODADA
+Executar o primeiro incremento técnico da Fase 2 conforme o plano consolidado:
+
+- criar a abstração pura `MessageGateway`
+- separar os contratos em arquivos dedicados
+- não alterar `ExecutionService`
+- não alterar `RetryService`
+- não alterar `BudgetReservationService`
+- não alterar `Ledger`
+
+ENQUADRAMENTO
+O arquivo enviado também pede:
+
+- `git commit`
+- criação da tag `m2-fase-1`
+- criação de branch `feature/m2-fase2-message-gateway`
+
+Essas três ações NÃO puderam ser executadas aqui por um motivo objetivo:
+- `git` não está disponível neste ambiente desta sessão
+
+Portanto, esta rodada executa tudo o que é realizável no repositório local da workspace:
+- criação dos contratos da Fase 2
+- validação técnica com `pnpm test`
+- validação técnica com `pnpm build`
+
+RESULTADO FINAL
+- a abstração `MessageGateway` foi criada
+- os tipos foram separados em arquivos próprios
+- a base permaneceu verde
+
+VALIDAÇÃO FINAL
+- `pnpm test` -> `93/93` testes passando
+- `pnpm build` -> `OK`
+
+ARQUIVOS NOVOS
+
+1. `server/gateways/OutboundMessage.ts`
+O que foi criado:
+- interface `OutboundMessage`
+
+Campos:
+- `executionId`
+- `recipient`
+- `content`
+- `metadata?`
+
+Efeito prático:
+- o envio deixa de depender apenas de parâmetros soltos do serviço atual
+- existe agora um contrato explícito de mensagem de saída
+
+2. `server/gateways/GatewayResult.ts`
+O que foi criado:
+- tipo `GatewayStatus`
+- interface `GatewayResult`
+
+Status definidos:
+- `ACKED`
+- `FAILED`
+- `TIMEOUT`
+
+Campos:
+- `status`
+- `attempt`
+- `occurredAt`
+- `providerMessageId?`
+- `providerMetadata?`
+
+Decisão importante:
+- foi usado `occurredAt` em vez de `timestamp`
+- isso evita ambiguidade com timestamps internos do domínio
+
+Também foi adotado:
+- `providerMessageId?`
+- `providerMetadata?`
+
+Motivo:
+- o contrato já nasce preparado para integrações reais futuras sem quebrar compatibilidade depois
+
+3. `server/gateways/MessageGateway.ts`
+O que foi criado:
+- interface `MessageGateway`
+
+Contrato:
+- `send(message: OutboundMessage): Promise<GatewayResult>`
+
+Decisão arquitetural importante:
+- nenhuma lógica de retry
+- nenhuma lógica de budget
+- nenhuma lógica de orquestração
+- nenhuma decisão de negócio
+
+Efeito prático:
+- o gateway nasce como abstração pura, exatamente como pedido
+
+4. `server/gateways/index.ts`
+O que foi criado:
+- barrel export dos contratos do gateway
+
+Efeito prático:
+- facilita a injeção posterior no `ExecutionService`
+- centraliza o ponto de import da abstração
+
+O QUE NÃO FOI ALTERADO DE PROPÓSITO
+
+Não foi alterado:
+- `server/services/behavior/executionService.ts`
+- `server/services/behavior/retryService.ts`
+- `server/services/behavior/budgetReservationService.ts`
+- `Ledger`
+- `Control Center`
+
+Motivo:
+- a rodada foi restrita ao `Commit 1` da Fase 2
+- isso preserva a disciplina definida:
+  - Commit 1 = contratos
+  - Commit 2 = injeção no `ExecutionService`
+  - Commit 3 = testes
+  - Commit 4 = documentação
+
+O QUE NÃO FOI POSSÍVEL EXECUTAR AQUI
+
+Não foi possível executar:
+- `git add .`
+- `git commit ...`
+- `git tag -a m2-fase-1 ...`
+- `git checkout -b feature/m2-fase2-message-gateway`
+
+Motivo técnico:
+- o binário/comando `git` não está disponível neste ambiente
+
+Consequência:
+- eu não consigo registrar a baseline no histórico Git a partir desta sessão
+- mas consigo deixar os arquivos prontos e validados para você fazer isso no repositório local real
+
+GANHO ARQUITETURAL
+Antes:
+- o núcleo conhecia apenas o envio concreto por `sendMessage(...)`
+- não existia ainda um contrato dedicado de gateway
+
+Depois:
+- existe uma fronteira explícita entre:
+  - orquestração de domínio
+  - contrato de envio externo
+
+Essa fronteira prepara corretamente a próxima etapa:
+
+ExecutionService
+        │
+        ▼
+MessageGateway
+        │
+        ▼
+Implementação concreta futura
+
+LISTA CONSOLIDADA DOS ARQUIVOS IMPACTADOS
+- `server/gateways/OutboundMessage.ts`
+- `server/gateways/GatewayResult.ts`
+- `server/gateways/MessageGateway.ts`
+- `server/gateways/index.ts`
+
+VEREDITO
+Esta rodada executa corretamente o `Commit 1` da Fase 2: a abstração `MessageGateway` foi criada como contrato puro, sem contaminar o núcleo com lógica de transporte. O próximo passo técnico continua sendo o `Commit 2`: adaptar o `ExecutionService` para depender dessa interface por injeção de dependência.

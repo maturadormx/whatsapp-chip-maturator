@@ -1,0 +1,96 @@
+ESTABILIZAÇÃO DO AMBIENTE — RESULTADO PARCIAL
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-21
+
+O QUE FOI FEITO
+
+1. Preservado `pnpm-lock.yaml`
+2. Limpo `dist`
+3. Reinstalado `node_modules` com `pnpm install`
+4. Verificadas versões:
+   - `node` = `v22.16.0`
+   - `pnpm` = `10.18.0`
+5. Verificado `pnpm list` para:
+   - `typescript`
+   - `vite`
+   - `@types/node`
+   - `esbuild`
+   - `zod`
+   - `drizzle-orm`
+6. Executado `pnpm store prune`
+7. Corrigido `tsconfig.json`
+
+MUDANÇA FEITA NO TSCONFIG
+
+Antes:
+- `"tsBuildInfoFile": "./node_modules/typescript/tsbuildinfo"`
+
+Depois:
+- `"tsBuildInfoFile": "./tsconfig.tsbuildinfo"`
+
+POR QUE ISSO FOI FEITO
+
+Nunca é uma boa ideia escrever artefatos do TypeScript dentro de `node_modules`.
+Isso estava causando um erro estrutural de escrita durante `tsc --noEmit`.
+
+O QUE O DIAGNÓSTICO MOSTROU
+
+Os pacotes-base estão resolvendo no grafo do `pnpm`:
+- `typescript`
+- `vite`
+- `@types/node`
+- `esbuild`
+- `zod`
+- `drizzle-orm`
+
+Isso muda a leitura do problema:
+- antes parecia falha de instalação
+- agora o `tsc` está chegando em erros reais do código do projeto
+
+PRIMEIRO PASSO QUE FALHA AGORA
+
+- `pnpm exec tsc --noEmit`
+
+IMPORTANTE
+
+Pela estratégia correta de estabilização, eu NÃO avancei para `pnpm test` nem `pnpm build` como critério de aceite, porque o `tsc` ainda não está verde.
+
+TIPO DE ERRO QUE SOBROU
+
+Os erros atuais são majoritariamente de código / tipagem, por exemplo:
+
+1. `implicit any`
+   - muitos em `server/routers/chips.ts`
+   - muitos em `server/services/*`
+
+2. tipos incompatíveis
+   - por exemplo em `server/services/behavior/executionService.ts`
+
+3. possíveis nulos / unknown
+   - por exemplo em `server/services/behaviorPlannerService.ts`
+
+4. alguns `Cannot find module`
+   - `zod`
+   - `drizzle-orm`
+
+Observação:
+como `pnpm list zod` e `pnpm list drizzle-orm` estão OK, esses erros não parecem mais ser de ausência do pacote em si, e sim de como o projeto está sendo tipado/resolvido no `tsc` desta base.
+
+CONCLUSÃO
+
+O ambiente ficou mais estável e o problema estrutural do `tsBuildInfoFile` foi removido.
+Agora o gargalo principal já não é “instalação quebrada”, e sim o fato de o projeto não passar em `strict` no `tsc`.
+
+PRÓXIMO PASSO CORRETO
+
+Se a meta for realmente deixar a validação verde, o próximo trabalho não é mais “arrumar o PNPM”, e sim:
+
+1. reduzir/organizar os erros de TypeScript
+2. decidir se:
+   - o projeto deve mesmo compilar inteiro em `strict`, ou
+   - precisa de um `tsconfig` separado para partes legadas
+
+VEREDITO
+
+O ambiente foi estabilizado o suficiente para chegar ao erro real.
+O primeiro bloqueio útil agora é o `tsc` do próprio código do projeto, não mais o `node_modules`.

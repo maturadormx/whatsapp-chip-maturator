@@ -1,0 +1,34 @@
+{
+  "datasetId": "synthetic-so-recebe",
+  "description": "Somente inbound sem ação ativa.",
+  "replayedAt": "2026-07-16T18:00:00.000Z",
+  "rawEvents": [
+    {
+      "eventType": "message_received",
+      "source": "messages.upsert",
+      "direction": "inbound",
+      "occurredAt": "2026-07-16T07:30:00.000Z",
+      "remoteJid": "5511999999999@s.whatsapp.net",
+      "remoteType": "contact",
+      "remoteLabel": "Contato Sintético"
+    },
+    {
+      "eventType": "message_received",
+      "source": "messages.upsert",
+      "direction": "inbound",
+      "occurredAt": "2026-07-16T13:45:00.000Z",
+      "remoteJid": "5511999999999@s.whatsapp.net",
+      "remoteType": "contact",
+      "remoteLabel": "Contato Sintético"
+    },
+    {
+      "eventType": "message_received",
+      "source": "messages.upsert",
+      "direction": "inbound",
+      "occurredAt": "2026-07-16T21:10:00.000Z",
+      "remoteJid": "5511999999999@s.whatsapp.net",
+      "remoteType": "contact",
+      "remoteLabel": "Contato Sintético"
+    }
+  ]
+}

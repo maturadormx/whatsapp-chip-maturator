@@ -1,0 +1,114 @@
+MATURADOR v1.0.0-operational — DIFF DE ENCERRAMENTO
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-22
+
+1. Objetivo
+
+Encerrar formalmente o Maturador como produto em operação, sem abrir nova frente de desenvolvimento.
+
+2. Confirmações realizadas
+
+Artefatos já existentes confirmados:
+- `E2_CERTIFICATION_REPORT.md`
+- `BASELINE_FREEZE_v1.0.0-operational.md`
+- `CHANGELOG.md`
+- versão base do projeto em `package.json` = `1.0.0`
+
+3. Arquivos criados nesta rodada
+
+- `FINAL_CHECKLIST.md`
+- `ROADMAP.md`
+- `release/v1.0.0-operational/README.md`
+- `release/v1.0.0-operational/E2_CERTIFICATION_REPORT.snapshot.md`
+- `release/v1.0.0-operational/BASELINE.snapshot.md`
+- `release/v1.0.0-operational/FINAL_CHECKLIST.snapshot.md`
+- `release/v1.0.0-operational/ROADMAP.snapshot.md`
+- `release/v1.0.0-operational/ARCHITECTURE.snapshot.md`
+- `release/v1.0.0-operational/VERSION`
+- `MATURADOR_v1.0.0_OPERATIONAL_DIFF.txt`
+
+4. FINAL_CHECKLIST
+
+Foi criado um checklist final simples e objetivo cobrindo:
+
+- arquitetura
+- backend
+- banco
+- redis
+- scheduler
+- worker
+- pipeline
+- observabilidade
+- resiliência
+- docker
+- admin
+- control center
+- logs
+- perfis
+- maturação
+- certificação
+- baseline
+- operação
+
+Decisão registrada:
+- `Maturador v1.0.0-operational encerrado.`
+
+5. ROADMAP
+
+Foi criado um roadmap de registro, não de desenvolvimento.
+
+Estado:
+- Sprint E2 → ✅
+- Operação 30 dias → ⏳
+- Disparador → ⏳
+- GitHub → ⏳
+- CI/CD → ⏳
+- Deploy → ⏳
+
+Também ficou explicitado:
+- não mudar arquitetura
+- não mudar layout
+- não mudar cores
+- não criar telas
+- não reorganizar menus
+- não refatorar estruturalmente
+- não abrir feature grande
+
+6. Snapshot oficial
+
+Foi criada a pasta:
+- `release/v1.0.0-operational/`
+
+Ela funciona como fotografia oficial da versão.
+
+Conteúdo:
+- relatório
+- checklist
+- baseline
+- roadmap
+- arquitetura
+- versão
+
+7. Leitura final
+
+O Maturador deixa de ser tratado como projeto em desenvolvimento contínuo.
+Ele passa a ser tratado como base operacional estável.
+
+Mudança de foco:
+- antes: construir o Maturador
+- agora: operar, observar estabilidade e preservar a base
+
+8. Próximo passo correto
+
+Durante 30 dias:
+- bug
+- melhoria pequena
+- performance
+- estabilidade
+
+Depois:
+- iniciar o Disparador sobre a plataforma já pronta
+
+9. Declaração final
+
+**Maturador v1.0.0-operational encerrado.**

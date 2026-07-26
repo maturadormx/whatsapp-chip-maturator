@@ -1,0 +1,52 @@
+{
+  "id": null,
+  "uid": "queue-dashboard",
+  "title": "Queue",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 2,
+  "refresh": "10s",
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Taxa de publicação e consumo",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        { "expr": "rate(queue_jobs_published_total[1m]) * 60", "legendFormat": "published/min", "refId": "A" },
+        { "expr": "rate(queue_jobs_consumed_total[1m]) * 60", "legendFormat": "consumed/min", "refId": "B" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Backlog da fila",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        { "expr": "queue_pending_observations", "legendFormat": "pending", "refId": "A" },
+        { "expr": "queue_active_jobs", "legendFormat": "active", "refId": "B" },
+        { "expr": "queue_failed_jobs", "legendFormat": "failed", "refId": "C" },
+        { "expr": "queue_delayed_jobs", "legendFormat": "delayed", "refId": "D" }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Espera p95",
+      "gridPos": { "x": 0, "y": 8, "w": 8, "h": 6 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum(rate(queue_wait_seconds_bucket[5m])) by (le))", "refId": "A" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Latência de espera",
+      "gridPos": { "x": 8, "y": 8, "w": 16, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        { "expr": "histogram_quantile(0.50, sum(rate(queue_wait_seconds_bucket[5m])) by (le))", "legendFormat": "p50", "refId": "A" },
+        { "expr": "histogram_quantile(0.95, sum(rate(queue_wait_seconds_bucket[5m])) by (le))", "legendFormat": "p95", "refId": "B" }
+      ]
+    }
+  ]
+}

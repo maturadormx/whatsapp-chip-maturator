@@ -1,0 +1,60 @@
+{
+  "datasetId": "chip-social",
+  "description": "Perfil com alta exposição social, grupos, status e múltiplas conversas.",
+  "replayedAt": "2026-07-17T12:00:00.000Z",
+  "rawEvents": [
+    {
+      "eventType": "group_joined",
+      "source": "human_group_entry",
+      "direction": "system",
+      "occurredAt": "2026-07-16T14:00:00.000Z",
+      "groupJid": "120363000000002@g.us",
+      "groupSubject": "Networking"
+    },
+    {
+      "eventType": "status_viewed",
+      "source": "human_observation",
+      "direction": "system",
+      "occurredAt": "2026-07-16T14:10:00.000Z",
+      "remoteJid": "5511555555555@s.whatsapp.net",
+      "remoteType": "contact",
+      "remoteLabel": "Contato Social"
+    },
+    {
+      "eventType": "message_received",
+      "source": "messages.upsert",
+      "direction": "inbound",
+      "occurredAt": "2026-07-16T14:12:00.000Z",
+      "remoteJid": "5511555555555@s.whatsapp.net",
+      "remoteType": "contact",
+      "remoteLabel": "Contato Social"
+    },
+    {
+      "eventType": "message_sent",
+      "source": "human_reply",
+      "direction": "outbound",
+      "occurredAt": "2026-07-16T14:14:00.000Z",
+      "remoteJid": "5511555555555@s.whatsapp.net",
+      "remoteType": "contact",
+      "remoteLabel": "Contato Social"
+    },
+    {
+      "eventType": "message_received",
+      "source": "messages.upsert",
+      "direction": "inbound",
+      "occurredAt": "2026-07-16T19:30:00.000Z",
+      "remoteJid": "5511444444444@s.whatsapp.net",
+      "remoteType": "contact",
+      "remoteLabel": "Contato Noite"
+    },
+    {
+      "eventType": "message_sent",
+      "source": "human_reply",
+      "direction": "outbound",
+      "occurredAt": "2026-07-16T19:33:00.000Z",
+      "remoteJid": "5511444444444@s.whatsapp.net",
+      "remoteType": "contact",
+      "remoteLabel": "Contato Noite"
+    }
+  ]
+}

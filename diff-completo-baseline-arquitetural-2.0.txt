@@ -1,0 +1,171 @@
+DIFF COMPLETO — BASELINE ARQUITETURAL 2.0
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-20
+
+OBJETIVO DA RODADA
+Congelar a baseline arquitetural 2.0 do projeto em uma estrutura documental explícita, incorporando os refinamentos conceituais apontados na revisão:
+
+- `Result` como retorno, não etapa
+- `Policy` opcional sem ambiguidade com o fluxo canônico
+- definição mais geral de `Application Service`
+- distinção mais clara entre `Capability` e `Adapter`
+- separação entre `patterns` e `implementations`
+- convenção única para ADRs novos
+
+ESCOPO
+Esta rodada altera apenas documentação e governança arquitetural.
+
+Não houve mudança em:
+- código de runtime
+- testes
+- build pipeline
+- adapters de infraestrutura
+
+ESTRUTURA MATERIALIZADA
+
+Arquivos criados em `docs/architecture/`:
+- `manifesto.md`
+- `principles.md`
+- `architecture-style.md`
+- `flows.md`
+- `patterns.md`
+- `implementations.md`
+- `glossary.md`
+- `roadmap.md`
+
+Arquivos atualizados:
+- `README.md`
+- `invariants.md`
+
+Arquivo atualizado em `docs/reviews/`:
+- `architecture-checklist.md`
+
+Arquivos criados em `docs/adr/`:
+- `0001-execution-service.md`
+- `0002-message-gateway.md`
+- `0003-mock-gateway.md`
+- `0004-clock.md`
+- `0005-ledger-repository.md`
+- `0006-mutable-clock-separation.md`
+- `0007-capability-vs-behavior.md`
+- `0008-pr11-ledger-repository.md`
+- `0009-mock-gateway-script.md`
+
+Arquivo atualizado em `docs/adr/`:
+- `README.md`
+
+REFINAMENTOS CONCEITUAIS APLICADOS
+
+1. Policy opcional × ontologia principal
+
+Antes:
+- o fluxo principal parecia obrigatório
+- mas o texto dizia que `Policy` podia ser omitida
+
+Agora:
+- `flows.md` explicita o caso completo como:
+  - `Observation -> Fact -> [Policy] -> Decision -> Application Service -> Effect`
+- o documento também afirma que esse é o caso completo, com variantes simplificadas
+
+Efeito:
+- a inconsistência entre ontologia principal e fluxo simplificado foi removida
+
+2. Application Service
+
+Antes:
+- a formulação podia sugerir que sempre existia uma `Decision` pronta na entrada
+
+Agora:
+- `glossary.md` e `flows.md` definem `Application Service` como coordenador da execução de um caso de uso utilizando `Policies` e `Capabilities`
+
+Efeito:
+- a definição continua precisa, mas deixa de pressupor sempre uma decisão prévia já materializada
+
+3. Capability × Adapter
+
+Antes:
+- a relação entre os dois conceitos ainda estava implícita
+
+Agora:
+- `glossary.md` torna explícito:
+  - `Capability` é a capacidade abstrata percebida pelo domínio
+  - `Adapter` é a implementação concreta dessa capacidade
+
+Efeito:
+- o modelo semântico fica mais claro e reduz a chance de misturar nível abstrato com nível concreto
+
+4. Effect
+
+Agora `glossary.md` e `flows.md` deixam explícito que:
+- `Effect` é interação com o mundo externo
+- pode resultar em sucesso, falha ou timeout
+
+Efeito:
+- evita interpretar `Effect` como “efeito já bem-sucedido”
+
+5. Patterns × Implementations
+
+Antes:
+- havia risco de exemplos específicos contaminarem a definição dos padrões
+
+Agora:
+- `patterns.md` contém apenas conceitos reutilizáveis
+- `implementations.md` concentra exemplos e escolhas específicas do projeto
+
+Efeito:
+- separação entre conhecimento arquitetural geral e decisões do projeto ficou explícita
+
+6. Roadmap
+
+Agora `roadmap.md` usa:
+- `Alta`
+- `Média`
+- `Baixa`
+
+Efeito:
+- o roadmap vira claramente documento evolutivo, não documento normativo
+
+7. Convenção de ADR
+
+Antes:
+- coexistiam referências do tipo `ADR-009-...` e numeração simples
+
+Agora:
+- `docs/adr/README.md` formaliza a convenção nova:
+  - `0001-...`
+  - `0002-...`
+  - `0003-...`
+- também explicita que os arquivos `ADR-00x-...` antigos permanecem apenas como legado histórico
+
+Efeito:
+- a baseline 2.0 passa a ter convenção única de ADR dali em diante, sem apagar o histórico anterior
+
+ARQUIVOS PRINCIPAIS E PAPÉIS
+
+| Documento | Papel |
+|---|---|
+| `manifesto.md` | filosofia |
+| `invariants.md` | identidade da arquitetura |
+| `principles.md` | regras permanentes |
+| `architecture-style.md` | contexto arquitetural |
+| `flows.md` | dinâmica dos casos de uso |
+| `patterns.md` | soluções arquiteturais reutilizáveis |
+| `implementations.md` | decisões específicas do projeto |
+| `glossary.md` | vocabulário oficial |
+| `roadmap.md` | planejamento evolutivo |
+| `architecture-checklist.md` | governança de revisão |
+| `docs/adr/0001...0009` | histórico normativo da baseline 2.0 |
+
+O QUE NÃO FOI FEITO DE PROPÓSITO
+
+- não apaguei os ADRs históricos antigos (`ADR-00x-...`)
+- não renomeei toda a documentação legada de fases anteriores
+- não alterei código para refletir nomenclatura conceitual como `MutableClock`
+
+Motivo:
+- o objetivo desta rodada foi congelar a baseline documental 2.0 com mínimo churn operacional
+- o histórico foi preservado
+- a convenção nova ficou definida a partir de agora
+
+VEREDITO
+A baseline arquitetural 2.0 foi materializada de forma mais coesa do que as versões anteriores. Ela separa filosofia, identidade, regras, contexto, dinâmica, padrões, implementações, vocabulário, governança e evolução em documentos com papéis distintos. As ambiguidades principais levantadas na revisão foram resolvidas sem introduzir novos conceitos desnecessários.

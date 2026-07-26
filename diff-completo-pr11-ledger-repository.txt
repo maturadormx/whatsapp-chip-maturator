@@ -1,0 +1,234 @@
+DIFF COMPLETO — PR #11 LEDGERREPOSITORY + CONSOLIDAÇÃO DO CLOCK E REFINO DO MOCK
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-20
+
+OBJETIVO DA RODADA
+Executar o próximo pacote arquitetural coerente com o arquivo enviado:
+
+1. introduzir `BehaviorActionLedgerRepository`
+2. integrar o repositório ao `ExecutionService`
+3. integrar o repositório ao `RetryService`
+4. consolidar a abstração `Clock`
+5. fechar a semântica determinística do `MockMessageGateway`
+6. registrar ADRs, checklist e rastreabilidade do novo marco
+
+RESULTADO FINAL
+- `BehaviorActionLedgerRepository` criado
+- adapters PostgreSQL e em memória criados
+- `ExecutionService` desacoplado das funções soltas de DB
+- `RetryService` desacoplado das funções soltas de DB
+- `MockMessageGateway.reset()` agora restaura o script inicial
+- `Clock` e `TestClock` permanecem separados e integrados ao núcleo
+- ADR do ledger e documentação do PR #11 criadas
+- base verde novamente
+
+VALIDAÇÃO FINAL
+- `pnpm test` -> `121/121` testes passando
+- `pnpm build` -> `OK`
+
+BLOCO 1 — LEDGERREPOSITORY
+
+Arquivos criados:
+- `server/repositories/ledger/BehaviorActionLedgerRepository.ts`
+- `server/repositories/ledger/InMemoryBehaviorActionLedgerRepository.ts`
+- `server/repositories/ledger/PostgresBehaviorActionLedgerRepository.ts`
+- `server/repositories/ledger/index.ts`
+
+O que entrou:
+- contrato `BehaviorActionLedgerRepository`
+- tipos do ledger:
+  - `BehaviorActionLedgerRecord`
+  - `CreateBehaviorActionLedgerRecord`
+  - `UpdateBehaviorActionLedgerRecord`
+- adapter PostgreSQL apoiado nas funções atuais de `server/db.ts`
+- adapter em memória para testes e integração
+
+Operações do contrato:
+- `create(...)`
+- `findById(...)`
+- `update(...)`
+- `listRecoverable(...)`
+
+Decisão arquitetural importante:
+- serviços não dependem mais de funções soltas de persistência
+- persistência do ledger vira uma fronteira explícita, simétrica a:
+  - `MessageGateway`
+  - `Clock`
+
+BLOCO 2 — EXECUTIONSERVICE AGORA DEPENDE DE LEDGERREPOSITORY
+
+Arquivo alterado:
+- `server/services/behavior/executionService.ts`
+
+O que mudou:
+- saiu:
+  - `createExecutionRecord`
+  - `getExecutionRecordById`
+  - `updateExecutionRecord`
+- entrou:
+  - `ledgerRepository`
+
+Default em produção:
+- `new PostgresBehaviorActionLedgerRepository()`
+
+Efeito prático:
+- o `ExecutionService` agora depende de três abstrações fundamentais:
+  - `MessageGateway`
+  - `Clock`
+  - `BehaviorActionLedgerRepository`
+
+O que permaneceu igual:
+- retry policy
+- budget reservation
+- estados do ledger
+- notificação de transições
+- contrato público do fluxo comportamental
+
+BLOCO 3 — RETRYSERVICE AGORA DEPENDE DE LEDGERREPOSITORY
+
+Arquivo alterado:
+- `server/services/behavior/retryService.ts`
+
+O que mudou:
+- saiu a dependência direta de `listRecoverableBehaviorActionExecutions`
+- entrou `ledgerRepository.listRecoverable(...)`
+
+Efeito prático:
+- o retry passa a consultar o ledger via contrato de persistência, não via helper solto de banco
+
+BLOCO 4 — REFINO FINAL DO MOCKMESSAGEGATEWAY
+
+Arquivos alterados:
+- `server/gateways/mock/MockConfig.ts`
+- `server/gateways/mock/MockMessageGateway.ts`
+- `tests/unit/gateways/mock/MockMessageGateway.test.ts`
+- `tests/integration/gateway-execution.test.ts`
+- `docs/architecture/m2-fase3-mock-gateway.md`
+
+O que foi consolidado:
+- `initialResults` como script determinístico
+- `enqueueResult(...)` como extensão explícita do script
+- `reset()` restaurando a fila inicial, não esvaziando silenciosamente o cenário
+- fila determinística mantida nos testes de integração
+
+Efeito prático:
+- o mock deixa de ser um “gerador de comportamento” e passa a ser um “roteiro controlado de cenário”
+
+Decisão importante:
+- mantive o nome `TestClock` nesta rodada, mas a separação produção/teste ficou totalmente explícita no contrato
+- não forcei uma renomeação cosmética ampla porque isso seria churn sem ganho funcional imediato no pacote atual
+
+BLOCO 5 — CLOCK CONSOLIDADO
+
+Arquivos já existentes e agora efetivamente consolidados no fluxo:
+- `server/clock/Clock.ts`
+- `server/clock/TestClock.ts`
+- `server/clock/SystemClock.ts`
+- `server/clock/FakeClock.ts`
+- `server/clock/index.ts`
+
+Integração confirmada:
+- `ExecutionService` usa `Clock` para:
+  - timestamp do dispatcher
+  - `lastRetryAt`
+  - `nextRetryAt`
+
+Teste dedicado:
+- `tests/unit/clock/FakeClock.test.ts`
+- integração de `nextRetryAt` em `tests/integration/gateway-execution.test.ts`
+
+BLOCO 6 — TESTES ADAPTADOS E NOVOS
+
+Arquivos alterados:
+- `server/services/behavior/executionService.test.ts`
+- `server/services/behavior/retryService.test.ts`
+- `server/services/behavior/phase1OperationalIntegration.test.ts`
+- `tests/integration/m2-fase1-e2e.test.ts`
+- `tests/integration/gateway-execution.test.ts`
+
+Arquivo criado:
+- `tests/unit/repositories/InMemoryBehaviorActionLedgerRepository.test.ts`
+
+O que foi validado:
+- criação e leitura de execução no ledger em memória
+- atualização de campos do ledger
+- listagem de execuções recuperáveis elegíveis
+- adaptação completa das harnesses para `ledgerRepository`
+- manutenção de todos os cenários anteriores da Fase 1, Fase 2 e PR #9
+
+Evolução da suíte:
+- antes da rodada: `118/118`
+- depois da rodada: `121/121`
+
+BLOCO 7 — ADRS E DOCUMENTAÇÃO
+
+Arquivos criados:
+- `docs/adr/ADR-009-ledger-repository.md`
+- `docs/architecture/m2-pr11-ledger-repository.md`
+
+Arquivos atualizados:
+- `docs/architecture/m2-traceability.md`
+- `docs/reviews/architecture-checklist.md`
+- `docs/architecture/m2-fase3-mock-gateway.md`
+
+O que isso formaliza:
+- `LedgerRepository` como fronteira arquitetural oficial
+- checklist exigindo que persistência do ledger passe por repositório
+- rastreabilidade do PR #11
+- semântica explícita do reset do mock
+
+ESTADO ARQUITETURAL APÓS ESTA RODADA
+
+```text
+ExecutionService
+        │
+        ├──► MessageGateway
+        ├──► Clock
+        └──► BehaviorActionLedgerRepository
+```
+
+Implementações de produção:
+- `SystemClock`
+- `PostgresBehaviorActionLedgerRepository`
+- adapter padrão do gateway atual
+
+Implementações de teste:
+- `FakeClock`
+- `InMemoryBehaviorActionLedgerRepository`
+- `MockMessageGateway`
+- `FakeMessageGateway`
+
+O QUE NÃO FOI FEITO DE PROPÓSITO
+- `Inbound`
+- `Event Store`
+- `Recovery`
+- projeções adicionais de painel
+- renomeação global de `TestClock`
+
+Motivo:
+- a rodada foi mantida no escopo útil do arquivo: fechar a persistência por repositório e estabilizar as abstrações fundamentais
+
+ARQUIVOS IMPACTADOS
+- `server/repositories/ledger/BehaviorActionLedgerRepository.ts`
+- `server/repositories/ledger/InMemoryBehaviorActionLedgerRepository.ts`
+- `server/repositories/ledger/PostgresBehaviorActionLedgerRepository.ts`
+- `server/repositories/ledger/index.ts`
+- `server/services/behavior/executionService.ts`
+- `server/services/behavior/retryService.ts`
+- `server/gateways/mock/MockConfig.ts`
+- `server/gateways/mock/MockMessageGateway.ts`
+- `server/services/behavior/executionService.test.ts`
+- `server/services/behavior/retryService.test.ts`
+- `server/services/behavior/phase1OperationalIntegration.test.ts`
+- `tests/integration/m2-fase1-e2e.test.ts`
+- `tests/integration/gateway-execution.test.ts`
+- `tests/unit/repositories/InMemoryBehaviorActionLedgerRepository.test.ts`
+- `tests/unit/gateways/mock/MockMessageGateway.test.ts`
+- `docs/adr/ADR-009-ledger-repository.md`
+- `docs/architecture/m2-pr11-ledger-repository.md`
+- `docs/architecture/m2-traceability.md`
+- `docs/reviews/architecture-checklist.md`
+- `docs/architecture/m2-fase3-mock-gateway.md`
+
+VEREDITO
+Esta rodada fecha um passo arquitetural importante: o núcleo agora depende explicitamente de três fronteiras fundamentais e simétricas — `MessageGateway`, `Clock` e `BehaviorActionLedgerRepository`. Ao mesmo tempo, o `MockMessageGateway` deixa de ter semântica ambígua e passa a operar como script determinístico restaurável. O sistema fica mais previsível, mais testável e melhor preparado para os próximos marcos, especialmente `Inbound` e `Event Store`.

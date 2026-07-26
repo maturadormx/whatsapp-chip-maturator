@@ -1,0 +1,20 @@
+import { defineConfig } from "vitest/config";
+import path from "path";
+
+const templateRoot = path.resolve(import.meta.dirname);
+
+export default defineConfig({
+  root: templateRoot,
+  cacheDir: process.env.VITEST_CACHE_DIR ?? path.resolve(templateRoot, ".cache", "vitest"),
+  resolve: {
+    alias: {
+      "@": path.resolve(templateRoot, "client", "src"),
+      "@shared": path.resolve(templateRoot, "shared"),
+      "@assets": path.resolve(templateRoot, "attached_assets"),
+    },
+  },
+  test: {
+    environment: "node",
+    include: ["server/**/*.test.ts", "server/**/*.spec.ts", "tests/**/*.test.ts", "tests/**/*.spec.ts"],
+  },
+});

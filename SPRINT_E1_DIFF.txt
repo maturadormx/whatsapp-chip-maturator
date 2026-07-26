@@ -1,0 +1,96 @@
+SPRINT E1 — VALIDAÇÃO OPERACIONAL (DOCKER) — DIFF / RESULTADOS
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-22
+
+0) Veredito de contexto (E0.2)
+- O build frontend no Windows segue como INFRA-02 (Known Issue).
+- Workaround oficial: build via Linux (Docker/WSL).
+
+1) Mudanças aplicadas para E1
+
+1.1) `docker-compose.operations.yml`
+- Adicionado `mysql` à stack operacional e volume persistente `mysql_local_data`.
+- `app` passou a rodar com persistência real:
+  - `OBSERVATION_RUNTIME_DRIVER=mysql`
+  - `DATABASE_URL=mysql://chip_user:chip_pass@mysql:3306/whatsapp_chip_maturator`
+- Ajuste de conflito de porta do Grafana:
+  - de `3001:3000` para `3002:3000`
+
+1.2) `Dockerfile`
+- Corrigido erro de build do container:
+  - removido `COPY --from=builder /app/public ./public` (essa pasta não existe no repo; o estático está em `dist/public`).
+
+1.3) Produção sem dev-deps (fix real)
+- Problema: o container de produção estava quebrando porque o bundle do backend exigia pacotes dev do Vite (`vite`, `@tailwindcss/vite`, etc.).
+- Solução:
+  - `server/_core/vite.ts` ficou apenas com `serveStatic()`.
+  - `server/_core/viteDev.ts` (novo) concentra `setupVite()` e depende de `vite.config.ts` e plugins.
+  - `server/_core/index.ts` passou a carregar `viteDev` via `await import("./viteDev")` somente em `NODE_ENV=development`.
+  - `scripts/build.mjs` passou a usar `esbuild --splitting` para impedir que o módulo dev seja “inline” no bundle de produção.
+
+2) Execução / Evidências (E1)
+
+2.1) Stack operacional (Docker Compose)
+- Subida da stack:
+  - `docker compose -f docker-compose.operations.yml up -d --build`
+
+- Containers em execução:
+  - app: `Up`
+  - mysql: `Up (healthy)`
+  - redis: `Up`
+  - prometheus: `Up`
+  - grafana: `Up` (host: `3002`)
+  - alertmanager: `Up`
+
+2.2) Redis / MySQL
+- Redis:
+  - `redis-cli ping` => `PONG`
+- MySQL:
+  - `mysql -uroot -proot_pass_local -e "SELECT 1"` => `1`
+
+2.3) Health endpoints
+- `GET /live`:
+  - `{"ok":true,"status":"live",...}`
+- `GET /ready`:
+  - `{"ok":true,"driver":"mysql","queueEnabled":true,...}`
+  - evidência de BullMQ “viva”:
+    - `publishedTotal: 1`
+    - `consumedTotal: 1`
+- `GET /health`:
+  - `{"ok":true,"status":"healthy",...}`
+
+2.4) Prometheus / Grafana / Alertmanager
+- Prometheus ready:
+  - `GET http://localhost:9090/-/ready` => `200` (Ready)
+- Alertmanager ready:
+  - `GET http://localhost:9093/-/ready` => `200` (OK)
+- Prometheus scrape confirm (query):
+  - `up{job="app"} == 1`
+- Grafana health:
+  - `GET http://localhost:3002/api/health` => `database: ok`
+
+2.5) Inbound + Pipeline (contraprova funcional)
+- POST Inbound (via `Invoke-RestMethod` com JSON válido):
+  - `POST /api/inbound/events` => `{"status":"accepted","id":"..."}`
+
+- Métricas confirmando processamento:
+  - BEFORE: `pipeline_started_total=1`, `pipeline_completed_total=1`
+  - AFTER:  `pipeline_started_total=2`, `pipeline_completed_total=2`
+  - DELTA: `+1` em ambos
+
+3) URLs operacionais (para inspeção manual)
+- App: http://localhost:3000/
+- Métricas: http://localhost:3000/internal/metrics
+- Prometheus: http://localhost:9090/
+- Alertmanager: http://localhost:9093/
+- Grafana: http://localhost:3002/
+
+4) Observações
+- Há um warning não-bloqueante de OAuth: `OAUTH_SERVER_URL is not configured`.
+- A validação E1 comprovou: MySQL real, Redis real, Worker ativo e pipeline processando com métricas.
+
+5) Próximos passos (E1.2+)
+- Criar/validar dashboards reais no Grafana usando as 20 métricas já expostas.
+- Configurar e validar alertas no Alertmanager (ex.: `worker_running == 0`, `dlq_current_size > 0`).
+- Rodar a auditoria operacional do Sprint 0 com a stack real ligada (Redis+MySQL), e registrar GO/NO-GO.
+

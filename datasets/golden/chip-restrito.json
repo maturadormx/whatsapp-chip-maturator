@@ -1,0 +1,45 @@
+{
+  "datasetId": "chip-restrito",
+  "description": "Padrão arriscado com excesso de outbound concentrado e sem retorno humano.",
+  "replayedAt": "2026-07-17T12:00:00.000Z",
+  "rawEvents": [
+    {
+      "eventType": "message_sent",
+      "source": "campaign_dispatch",
+      "direction": "outbound",
+      "occurredAt": "2026-07-16T10:00:00.000Z",
+      "remoteJid": "5511777777777@s.whatsapp.net",
+      "remoteType": "contact"
+    },
+    {
+      "eventType": "message_sent",
+      "source": "campaign_dispatch",
+      "direction": "outbound",
+      "occurredAt": "2026-07-16T10:02:00.000Z",
+      "remoteJid": "5511777777777@s.whatsapp.net",
+      "remoteType": "contact"
+    },
+    {
+      "eventType": "message_sent",
+      "source": "campaign_dispatch",
+      "direction": "outbound",
+      "occurredAt": "2026-07-16T10:04:00.000Z",
+      "remoteJid": "5511777777777@s.whatsapp.net",
+      "remoteType": "contact"
+    },
+    {
+      "eventType": "message_sent",
+      "source": "campaign_dispatch",
+      "direction": "outbound",
+      "occurredAt": "2026-07-16T10:06:00.000Z",
+      "remoteJid": "5511777777777@s.whatsapp.net",
+      "remoteType": "contact"
+    },
+    {
+      "eventType": "chat_list_opened",
+      "source": "campaign_dispatch",
+      "direction": "system",
+      "occurredAt": "2026-07-16T10:07:00.000Z"
+    }
+  ]
+}

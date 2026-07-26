@@ -1,0 +1,205 @@
+DIFF COMPLETO DO PR #2 — OBSERVABILIDADE OPERACIONAL
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-20
+
+OBJETIVO
+Executar o próximo bloco natural após o Marco 1: transformar logs e snapshots comportamentais em métricas operacionais úteis, sem alterar a lógica da engine.
+
+PRINCÍPIO MANTIDO
+- Somente leitura no bloco analítico.
+- Sem alteração de comportamento do sistema.
+- Integração correta via backend (`service` -> `router` -> `page`), sem importar código de servidor direto no client.
+
+RESULTADO FINAL
+- Foi criado um módulo de consultas analíticas para comportamento.
+- O `Control Center` agora exibe:
+  - top motivos de bloqueio
+  - distribuição por fase
+  - chips presos 24h+
+  - alertas comportamentais simples
+  - versão de política recente
+- A integração foi feita no `getOverview()` do backend.
+- A suíte passou de `55` para `62` testes.
+- `pnpm build` continua verde.
+
+VALIDAÇÃO
+- `pnpm test` -> `62/62` testes passando
+- `20` arquivos de teste
+- `pnpm build` -> `OK`
+
+ARQUIVOS NOVOS
+
+1. `server/services/behavior/behaviorQueries.ts`
+O que foi criado:
+- Tipos analíticos:
+  - `TopBlockReason`
+  - `PhaseDistribution`
+  - `StuckChip`
+  - `PhaseDuration`
+  - `PolicyVersionUsage`
+- Helpers puros:
+  - `parsePolicyFingerprint(...)`
+  - `buildTopBlockReasons(...)`
+  - `buildPhaseDistribution(...)`
+  - `buildStuckChips(...)`
+  - `buildAveragePhaseDuration(...)`
+  - `buildRecentPolicyVersions(...)`
+  - `buildOperationalAlerts(...)`
+- Funções de consulta reais:
+  - `getTopBlockReasons(days = 7)`
+  - `getPhaseDistribution()`
+  - `getStuckChips(hours = 24)`
+  - `getAveragePhaseDuration()`
+  - `getRecentPolicyVersions(limit = 10)`
+  - `getOperationalAlerts()`
+
+O que essas queries entregam:
+- Motivos mais frequentes de `BLOCK`
+- Distribuição atual de snapshots por fase
+- Chips com fase parada acima do limiar
+- Tempo médio aproximado por fase
+- Fingerprints/políticas recentes em uso
+- Alertas objetivos derivados das métricas
+
+Decisões técnicas importantes:
+- As agregações foram feitas em memória depois de seleções enxutas do banco.
+- Isso evita SQL complexo e deixa o módulo mais fácil de testar.
+- `policyFingerprint` é parseado no formato persistido atual:
+  `engineVersion:policyVersion:rulesRevision`
+
+Efeito prático:
+- O projeto passou a responder perguntas operacionais úteis sem tocar na engine.
+
+2. `server/services/behavior/behaviorQueries.test.ts`
+O que foi criado:
+- Testes puros para as agregações analíticas.
+
+Casos cobertos:
+- top block reasons em ordem decrescente
+- distribuição por fase com percentual
+- detecção de chips presos
+- duração média por fase
+- agregação de versões recentes de política
+- geração de alertas operacionais
+- parse do fingerprint persistido
+
+Efeito prático:
+- O PR #2 ficou blindado sem depender de banco real nos testes.
+
+ARQUIVOS ALTERADOS
+
+3. `server/services/controlCenterService.ts`
+O que mudou:
+- Importei as queries analíticas do novo módulo.
+- Expandi `ControlCenterOverview` com o bloco:
+  - `behavior.topBlockReasons`
+  - `behavior.phaseDistribution`
+  - `behavior.stuckChips`
+  - `behavior.averagePhaseDuration`
+  - `behavior.recentPolicyVersions`
+  - `behavior.alerts`
+- O método `getOverview(adminUserId)` agora busca essas métricas em paralelo junto com:
+  - usuários
+  - planos
+  - chips
+  - runtime
+  - reconciliação
+  - auditoria
+
+Efeito prático:
+- O `Control Center` ganhou um pacote de inteligência operacional sem criar endpoint separado para cada métrica.
+
+4. `client/src/pages/ControlCenter.tsx`
+O que mudou:
+- Na aba `dashboard` foi adicionada uma nova faixa de cards para Behavior Health.
+
+Blocos adicionados:
+- `Behavior Health`
+  - top bloqueio
+  - chips presos 24h+
+  - fase dominante
+  - policy ativa
+  - alertas comportamentais
+- `Top bloqueios`
+  - lista dos motivos mais frequentes nos últimos 7 dias
+- `Chips presos`
+  - lista curta dos chips com fase parada por 24h ou mais
+
+O que foi evitado de propósito:
+- Não foi feito import direto de `server/services/...` no client.
+- Não foi criado polling manual novo para queries isoladas.
+- O painel continua consumindo o `overview` central via tRPC.
+
+Efeito prático:
+- A tela passou a mostrar informação acionável em vez de apenas estado bruto.
+
+O QUE ESSA RODADA NÃO FEZ
+- Não alterou thresholds da policy
+- Não alterou delays da engine
+- Não adicionou simulador
+- Não adicionou Event Bus novo
+- Não criou camada extra desnecessária
+
+Ou seja:
+- este PR observa melhor
+- não decide diferente
+
+DETALHES IMPORTANTES DE IMPLEMENTAÇÃO
+
+Stuck chips
+- Corrigi implicitamente um erro do rascunho enviado.
+- Um chip "preso" precisa ter `updatedAt` antigo o suficiente.
+- Por isso a query usa `<= threshold`, não `>= threshold`.
+
+Recent policy versions
+- O rascunho sugeria tratar `policyFingerprint` como JSON.
+- No estado real do projeto ele está persistido como string compacta.
+- A implementação final respeita o formato real e faz parse seguro.
+
+Average phase duration
+- A métrica é aproximada usando `updatedAt` do snapshot atual.
+- Não tenta inventar uma tabela de transições que ainda não existe.
+- Isso preserva o princípio do PR: extrair valor dos dados atuais sem inflar a arquitetura.
+
+Alertas operacionais
+- Os alertas são propositalmente simples:
+  - chips em `birth` por mais de 48h
+  - chips com razão relacionada a cooldown por mais de 24h
+  - motivo dominante concentrando 50%+ dos bloqueios recentes
+
+Isso mantém baixo custo e alto valor.
+
+LISTA CONSOLIDADA DOS ARQUIVOS IMPACTADOS
+- `server/services/behavior/behaviorQueries.ts`
+- `server/services/behavior/behaviorQueries.test.ts`
+- `server/services/controlCenterService.ts`
+- `client/src/pages/ControlCenter.tsx`
+
+GANHO ARQUITETURAL
+Antes:
+- havia logs e snapshots
+- mas faltava leitura analítica consolidada
+
+Depois:
+- logs e snapshots viraram:
+  - métricas
+  - listas de atenção
+  - leitura por fase
+  - leitura por motivo de bloqueio
+  - insumo real para decisões futuras
+
+GANHO OPERACIONAL
+Agora o sistema consegue responder melhor:
+- Por que os chips estão bloqueando?
+- Qual fase concentra a frota?
+- Existem chips parados há muito tempo?
+- Qual política recente está aparecendo nos eventos?
+- Há algum padrão dominante de falha que já mereça atenção?
+
+VEREDITO
+Esse PR ficou alinhado com a estratégia certa para a etapa atual do projeto:
+- primeiro observar
+- depois medir
+- só então mexer no comportamento da engine
+
+O núcleo permaneceu estável, mas a visibilidade operacional subiu bastante.

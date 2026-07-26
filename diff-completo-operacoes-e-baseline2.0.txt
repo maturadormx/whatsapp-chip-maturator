@@ -1,0 +1,93 @@
+DIFF COMPLETO — BASELINE 2.0 + OPERAÇÕES
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-20
+
+OBJETIVO DA RODADA
+Materializar os itens pedidos no arquivo enviado:
+
+1. separar arquitetura (normativa) de operação (como o time trabalha)
+2. documentar estratégia de paralelismo com núcleo protegido
+3. formalizar `Integration Milestone (IM)`
+4. formalizar política de ADR: nunca apagar, apenas substituir (status)
+5. consolidar `contracts.md` como fonte única de verdade dos ports do núcleo
+6. alinhar a nomenclatura `MutableClock` (sem quebrar compatibilidade com `TestClock`)
+7. manter a baseline 2.0 coesa com `patterns` vs `implementations`
+
+VALIDAÇÃO
+- `pnpm test` -> `121/121` testes passando
+- `pnpm build` -> `OK`
+
+MUDANÇAS PRINCIPAIS
+
+1) Operações separadas
+
+Arquivos criados em `docs/operations/`:
+- `README.md`
+- `parallelism-strategy.md`
+- `integration-milestone.md`
+- `adr-policy.md`
+- `merge-policy.md`
+
+Efeito:
+- estratégia de execução do time deixa de competir com documentos normativos da arquitetura
+
+2) Contracts como fonte única
+
+Arquivo criado:
+- `docs/architecture/contracts.md`
+
+Efeito:
+- o projeto tem um ponto único para ler quais contratos o núcleo reconhece e quais adapters existem para produção/teste
+
+3) MutableClock sem quebrar TestClock
+
+Arquivos criados/atualizados:
+- `server/clock/MutableClock.ts` (novo contrato de teste)
+- `server/clock/TestClock.ts` agora é alias de compatibilidade
+- `server/clock/FakeClock.ts` passa a implementar `MutableClock`
+- `server/clock/index.ts` exporta `MutableClock` e preserva `TestClock`
+
+Efeito:
+- a documentação pode falar em `MutableClock`
+- o código antigo continua compilando com `TestClock`
+
+4) Governança de ADR
+
+Arquivo atualizado:
+- `docs/adr/README.md`
+
+Efeito:
+- convenção da baseline 2.0 fica explícita
+- política “nunca apagar ADR” fica registrada
+
+5) Ajustes na baseline 2.0
+
+Arquivos atualizados:
+- `docs/architecture/README.md` (inclui `contracts.md` e aponta para `docs/operations/`)
+- `docs/architecture/patterns.md` (terminologia `Mutable Clock`)
+
+ARQUIVOS IMPACTADOS
+
+Operações:
+- `docs/operations/README.md`
+- `docs/operations/parallelism-strategy.md`
+- `docs/operations/integration-milestone.md`
+- `docs/operations/adr-policy.md`
+- `docs/operations/merge-policy.md`
+
+Arquitetura:
+- `docs/architecture/contracts.md`
+- `docs/architecture/README.md`
+- `docs/architecture/patterns.md`
+
+ADRs:
+- `docs/adr/README.md`
+
+Clock:
+- `server/clock/MutableClock.ts`
+- `server/clock/TestClock.ts`
+- `server/clock/FakeClock.ts`
+- `server/clock/index.ts`
+
+VEREDITO
+O repositório agora tem uma baseline 2.0 mais “operável”: arquitetura normativa permanece limpa, e o modo de trabalho do time foi separado em documentos próprios. A nomenclatura do relógio de teste foi alinhada para `MutableClock` sem quebrar compatibilidade com `TestClock`. O conjunto continua verde.

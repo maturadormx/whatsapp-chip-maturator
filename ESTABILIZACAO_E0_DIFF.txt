@@ -1,0 +1,136 @@
+ESTABILIZAÇÃO E0 - DIFF OPERACIONAL
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-21
+
+1. Objetivo desta rodada
+- Estabilizar o workspace principal no Windows.
+- Eliminar falhas artificiais de bootstrap/caches.
+- Revalidar na ordem: install -> check -> test -> build -> dev.
+
+2. Arquivos alterados
+
+[package.json]
+- `build` deixou de chamar `vite build && esbuild ...` diretamente.
+- `build` agora usa `node scripts/build.mjs`.
+- `test` agora usa `node scripts/test.mjs`.
+- `vitest` foi alinhado para a linha `^3.2.4`.
+
+[scripts/dev.mjs]
+- Mantido bootstrap resiliente para desenvolvimento sem serviços persistentes.
+- Cache e diretórios temporários foram isolados por comando.
+- `TMP`, `TEMP`, `VITE_CACHE_DIR` e `VITEST_CACHE_DIR` passaram a ser controlados explicitamente.
+- O comando de desenvolvimento segue via `npx tsx watch server/_core/index.ts`.
+
+[scripts/build.mjs] (novo)
+- Script de build dedicado para Windows.
+- Isola `TMP`, `TEMP` e `VITE_CACHE_DIR`.
+- Executa `vite build` e depois `esbuild` do backend.
+- Adicionado retry simples para o erro transitório de limpeza do `esbuild`.
+
+[scripts/test.mjs] (novo)
+- Script de teste dedicado.
+- Isola `TMP`, `TEMP`, `VITE_CACHE_DIR` e `VITEST_CACHE_DIR`.
+- Executa `vitest run` sem depender da resolução antiga do runner.
+
+[vite.config.ts]
+- Mantido `cacheDir` configurável por ambiente.
+- Ajustado `optimizeDeps` para reduzir interferência do otimizador de dependências no `dev`.
+
+3. Causa raiz identificada
+
+[corrigida]
+- O workspace estava com `vite@7.3.6` materializado junto com `vitest@2.1.x`.
+- O lockfile mostrava que `vitest` dependia de `vite: ^5.0.0`, enquanto o projeto efetivamente usava `vite@7.3.6`.
+- Isso explicava o erro generalizado `ReferenceError: __vite_ssr_exportName__ is not defined`.
+
+[residual]
+- Mesmo após o alinhamento do runner de testes, o Windows continua falhando em operações de escrita/remoção do `esbuild` usadas pelo Vite:
+  - `build`: `[vite:esbuild-transpile] remove ... Access is denied`
+  - `dev`: `Failed to write to output file ... deps_temp_... Access is denied`
+- O problema agora está delimitado no Vite/esbuild do ambiente Windows, e não mais no código TypeScript da aplicação.
+
+4. Validação executada
+
+[OK] npm install
+- Dependências atualizadas e lockfile ajustado.
+
+[OK] npm run check
+- `tsc --noEmit` verde.
+
+[OK] npm test
+- Resultado final:
+  - Test Files: `54 passed | 2 skipped`
+  - Tests: `162 passed | 2 skipped`
+
+[FALHA RESIDUAL] npm run build
+- O front build transforma todos os módulos e falha no cleanup temporário do `esbuild`.
+- Sintoma persistente:
+  - `[vite:esbuild-transpile] remove ... Access is denied`
+
+[FALHA RESIDUAL] npm run dev
+- O backend sobe e chega a responder no endpoint `/live`.
+- Porém o Vite do cliente falha na otimização/pré-bundle de dependências:
+  - `Failed to write to output file ... deps_temp_... Access is denied`
+
+5. Leitura operacional do estado atual
+
+O workspace principal deixou de estar quebrado por incompatibilidade de versões no stack de testes.
+Hoje o estado é:
+- TypeScript: verde
+- Testes: verdes
+- Bootstrap backend: funcional
+- Front build/dev via Vite no Windows: ainda instável por erro de I/O do esbuild
+
+6. Diff resumido por intenção
+
+- Alinhamento de versão do test runner com o Vite materializado.
+- Isolamento de caches e temporários por comando para reduzir colisão e lixo em `node_modules`.
+- Encapsulamento de `build` e `test` em scripts próprios.
+- Preservação do bootstrap seguro de desenvolvimento sem MySQL/Redis obrigatórios.
+
+7. Próximo passo recomendado
+
+O próximo passo correto é atacar especificamente a camada Vite/esbuild do Windows no workspace principal, sem voltar a mexer no domínio da aplicação.
+Foco:
+- testar pin de Vite/esbuild em combinação alternativa estável para Windows;
+- ou substituir/neutralizar o trecho do pipeline que dispara o `esbuild-transpile`/dep optimizer nesse ambiente.
+
+8. Rodada adicional E0.1
+
+Mapeamento real de versões no início desta rodada:
+- `vite@7.3.6`
+- `vitest@3.2.7`
+- `esbuild@0.25.12` na raiz, inválido para o `vite@7`
+
+Correções aplicadas:
+- `esbuild` da raiz atualizado para `0.28.1` para alinhar com `vite@7.3.6`
+- limpeza de `.cache`, `dist`, caches temporários em `node_modules` e cache curto em `C:\Users\AORUS\.trae\work\whatsapp-chip-maturator-cache`
+- encerramento de processos `node.exe` remanescentes
+
+Resultado após alinhamento Vite 7:
+- `npm ls esbuild` ficou estruturalmente coerente para `vite@7`
+- `npm run build` continuou falhando com o mesmo padrão:
+  - `[vite:esbuild-transpile] remove ... Access is denied`
+
+Experimento adicional executado:
+- downgrade controlado para:
+  - `vite@5.4.11`
+  - `esbuild@0.21.5`
+- ajuste de compatibilidade em `vite.config.ts` removendo `allowedHosts`, que quebra tipagem no Vite 5
+
+Estado após a matriz Vite 5:
+- `npm run check`: verde
+- `npm test`: verde (`54 passed | 2 skipped`, `162 passed | 2 skipped`)
+- `npm run build`: continua falhando exatamente no cleanup temporário do `esbuild`
+
+Conclusão fortalecida:
+- o erro residual não depende apenas da combinação `vite@7 + esbuild@0.28`
+- ele também reaparece com `vite@5.4.11 + esbuild@0.21.5`
+- isso aumenta a evidência de que o bloqueio é ambiental/Windows I/O, e não de domínio nem de simples incompatibilidade de versões
+
+Novo estado operacional:
+- domínio: estável
+- TypeScript: estável
+- testes: estáveis
+- build frontend: bloqueado por `esbuild` ao remover temporários
+- dev frontend: continua pendente, sem sentido prosseguir antes de resolver a mesma raiz do build

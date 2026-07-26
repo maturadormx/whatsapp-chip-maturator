@@ -1,0 +1,177 @@
+D3.2 — ENTREGA 1 PROMETHEUS
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-21
+
+RESUMO
+
+Foi implementada a Entrega 1 do D3.2 no escopo consolidado:
+
+1. Registry singleton do Prometheus
+2. `collectDefaultMetrics()` do Node.js
+3. endpoint `GET /internal/metrics`
+4. bootstrap idempotente
+5. teste da rota
+6. teste do singleton
+7. documentação de observabilidade formalizada
+
+VALIDAÇÃO FINAL NO CLONE COM NPM
+
+Ambiente validado:
+- `whatsapp-chip-maturator-d32-npm-test`
+
+Resultados:
+- `npx tsc --noEmit` -> OK
+- `npm test` -> `161` testes passando, `2` pulados
+- `npm run build` -> OK
+
+ESCOPO IMPLEMENTADO
+
+## 1. Dependência Prometheus
+
+Arquivo:
+- `package.json`
+
+Dependência adicionada:
+- `prom-client`
+
+## 2. Registry singleton
+
+Arquivos:
+- `server/metrics/PrometheusRegistry.ts`
+- `server/metrics/index.ts`
+
+O que faz:
+- cria um `Registry` singleton
+- registra `collectDefaultMetrics()`
+- expõe `initMetrics()` idempotente
+- expõe `getRegistry()`
+
+Detalhe importante:
+- `collectDefaultMetrics()` fica no nível do módulo, não dentro de `initMetrics()`
+- isso evita duplicação de métricas por inicialização repetida
+
+## 3. Endpoint interno de métricas
+
+Arquivo:
+- `server/routes/internal/metrics.ts`
+
+Rota criada:
+- `GET /internal/metrics`
+
+Comportamento:
+- define `Content-Type` com `registry.contentType`
+- retorna `await registry.metrics()`
+- responde no formato Prometheus exposition
+
+## 4. Bootstrap
+
+Arquivo:
+- `server/_core/index.ts`
+
+Mudanças:
+- `initMetrics()` agora é chamado no bootstrap
+- `app.use("/internal", internalMetricsRouter)` foi registrado
+
+Resultado:
+- o endpoint interno entra no servidor principal
+- a inicialização é segura para chamadas repetidas
+
+## 5. Testes
+
+Arquivo:
+- `server/routes/internal/metrics.test.ts`
+
+Casos cobertos:
+
+1. `GET /internal/metrics`
+- retorna `200`
+- retorna `Content-Type` texto Prometheus
+- contém `# HELP`
+- contém `# TYPE`
+
+2. Singleton
+- `getRegistry()` retorna a mesma instância de `registry`
+
+## 6. Documentação de observabilidade
+
+Arquivo:
+- `docs/architecture/observability.md`
+
+Conteúdo:
+- árvore de spans
+- convenção de nomes
+- atributos obrigatórios
+- regra de cardinalidade
+- delimitação de escopo do D3.2 Entrega 1
+
+ARQUIVOS CRIADOS
+
+- `server/metrics/PrometheusRegistry.ts`
+- `server/metrics/index.ts`
+- `server/routes/internal/metrics.ts`
+- `server/routes/internal/metrics.test.ts`
+- `docs/architecture/observability.md`
+
+ARQUIVOS ALTERADOS
+
+- `package.json`
+- `server/_core/index.ts`
+
+EVIDÊNCIA DE VALIDAÇÃO
+
+`npm test`
+- nova suíte:
+  - `server/routes/internal/metrics.test.ts`
+- total final:
+  - `53` arquivos passando
+  - `161` testes passando
+  - `2` pulados
+
+`npm run build`
+- verde
+
+INTERPRETAÇÃO ARQUITETURAL
+
+Esta entrega NÃO adiciona ainda métricas de domínio.
+
+Ela estabelece somente a infraestrutura base:
+
+- registry único
+- métricas padrão do Node.js
+- endpoint interno dedicado para scrape
+
+Isso mantém a entrega pequena, validável e evita misturar:
+
+- infraestrutura Prometheus
+- métricas de fila
+- métricas de negócio
+- health endpoints
+
+STATUS APÓS A ENTREGA
+
+Marco	Status
+D2	✅ concluído
+D3.1	✅ concluído
+D3.2 Entrega 1	✅ concluída
+INFRA-01	📋 aberto
+
+PRÓXIMA ENTREGA NATURAL
+
+D3.2 Entrega 2:
+
+- counters de negócio
+- gauges da fila
+- histogramas de latência
+- integração do `QueueMetricsCollector` com Prometheus
+
+VEREDITO
+
+A Entrega 1 do D3.2 ficou implementada e validada no ambiente funcional com `npm`.
+
+Critérios atingidos:
+- registry singleton
+- default metrics
+- endpoint `/internal/metrics`
+- teste da rota
+- teste do singleton
+- build/testes verdes

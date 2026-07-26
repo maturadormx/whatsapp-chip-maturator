@@ -1,0 +1,25 @@
+{
+  "datasetId": "synthetic-baixa-atividade",
+  "description": "Baixa atividade e pouca diversidade.",
+  "replayedAt": "2026-07-16T23:00:00.000Z",
+  "rawEvents": [
+    {
+      "eventType": "session_connected",
+      "source": "synthetic_system",
+      "direction": "system",
+      "occurredAt": "2026-07-16T10:00:00.000Z",
+      "remoteJid": null,
+      "remoteType": null,
+      "remoteLabel": "Contato Sintético"
+    },
+    {
+      "eventType": "chat_list_opened",
+      "source": "synthetic_system",
+      "direction": "system",
+      "occurredAt": "2026-07-16T10:05:00.000Z",
+      "remoteJid": null,
+      "remoteType": null,
+      "remoteLabel": "Contato Sintético"
+    }
+  ]
+}

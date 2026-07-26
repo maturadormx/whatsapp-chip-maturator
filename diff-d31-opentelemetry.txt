@@ -1,0 +1,232 @@
+D3.1 — BOOTSTRAP DE TRACING E INSTRUMENTAÇÃO INICIAL
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-21
+
+RESUMO
+
+Foi implementada a Fase 1 do D3 com OpenTelemetry:
+
+1. bootstrap de tracing
+2. `TelemetryService`
+3. instrumentação inicial em scheduler, worker, pipeline, repository e `BullMQAdapter`
+4. propagação de contexto no publish/consume da fila
+5. validação no clone funcional com `npm`
+
+VALIDAÇÃO FINAL NO CLONE COM NPM
+
+Ambiente validado:
+- `whatsapp-chip-maturator-d31-npm-test`
+
+Resultados:
+- `npx tsc --noEmit` -> OK
+- `npm test` -> `159` testes passando, `2` pulados
+- `npm run build` -> OK
+
+DEPENDÊNCIAS ADICIONADAS
+
+Arquivo:
+- `package.json`
+
+Dependências:
+- `@opentelemetry/api`
+- `@opentelemetry/auto-instrumentations-node`
+- `@opentelemetry/sdk-node`
+- `@opentelemetry/sdk-trace-base`
+
+ARQUIVOS NOVOS
+
+1. Telemetria base
+- `server/telemetry/Tracing.ts`
+- `server/telemetry/TelemetryService.ts`
+- `server/telemetry/index.ts`
+
+2. Teste de propagação D3.1
+- `server/telemetry/D31TelemetryFlow.test.ts`
+
+ARQUIVOS ALTERADOS
+
+Configuração:
+- `package.json`
+- `.env.example`
+- `server/_core/env.ts`
+- `server/_core/index.ts`
+
+Instrumentação:
+- `server/infrastructure/queue/QueuePublishingScheduler.ts`
+- `server/infrastructure/queue/ObservationWorker.ts`
+- `server/application/observation/ObservationPipeline.ts`
+- `server/repositories/observation/MemoryObservationRepository.ts`
+- `server/infrastructure/persistence/mysql/MysqlObservationRepository.ts`
+- `server/infrastructure/queue/BullMQAdapter.ts`
+
+O QUE FOI IMPLEMENTADO
+
+## 1. Bootstrap de tracing
+
+Arquivo:
+- `server/telemetry/Tracing.ts`
+
+Funções:
+- `startTracing()`
+- `shutdownTracing()`
+- `isTracingStarted()`
+
+Comportamento:
+- usa `NodeSDK`
+- usa `SimpleSpanProcessor`
+- usa `ConsoleSpanExporter` por padrão
+- carrega `getNodeAutoInstrumentations()`
+
+Integração no bootstrap:
+- `server/_core/index.ts` agora chama `startTracing()` quando `TELEMETRY_ENABLED=true`
+
+## 2. TelemetryService
+
+Arquivo:
+- `server/telemetry/TelemetryService.ts`
+
+Capacidades:
+- `startSpan`
+- `withSpan`
+- `addEvent`
+- `injectContext`
+- `extractContext`
+
+Detalhe importante:
+- foi adicionado fallback manual de `traceparent`
+- isso evita depender exclusivamente do propagator global para montar o carrier
+
+## 3. Instrumentação do Scheduler
+
+Arquivo:
+- `server/infrastructure/queue/QueuePublishingScheduler.ts`
+
+Span:
+- `scheduler.run`
+
+Eventos:
+- `publishing_batch`
+- `batch_published`
+
+Atributos:
+- `scheduler.interval_ms`
+- `scheduler.batch_size`
+
+## 4. Instrumentação do Worker
+
+Arquivo:
+- `server/infrastructure/queue/ObservationWorker.ts`
+
+Span:
+- `worker.processBatch`
+
+Eventos:
+- `claimed_observations`
+- `processing_observation`
+- `worker_batch_completed`
+
+Atributos:
+- `queue.job_id`
+- `queue.job_type`
+
+## 5. Instrumentação do Pipeline
+
+Arquivo:
+- `server/application/observation/ObservationPipeline.ts`
+
+Span:
+- `pipeline.process`
+
+Eventos:
+- `saving_observation`
+- `fact_generated`
+- `rules_evaluated`
+- `plan_created`
+- `plan_executed`
+
+Atributos:
+- `observation.id`
+- `observation.type`
+
+## 6. Instrumentação dos repositories de Observation
+
+Arquivos:
+- `server/repositories/observation/MemoryObservationRepository.ts`
+- `server/infrastructure/persistence/mysql/MysqlObservationRepository.ts`
+
+Spans:
+- `repository.save`
+- `repository.findById`
+- `repository.claimPending`
+- `repository.completeProcessing`
+
+## 7. Instrumentação do BullMQAdapter
+
+Arquivo:
+- `server/infrastructure/queue/BullMQAdapter.ts`
+
+Spans:
+- `queue.publish`
+- `queue.consume`
+- `queue.dlq`
+
+Comportamentos implementados:
+- carrier de tracing injetado no `metadata.__otelContext`
+- contexto extraído no consumo
+- contexto também reaproveitado quando job vai para DLQ
+
+Eventos:
+- `job_published`
+- `job_consumed`
+- `job_moved_to_dlq`
+
+VALIDAÇÃO ESPECÍFICA DE TRACE/PROPAGAÇÃO
+
+Arquivo:
+- `server/telemetry/D31TelemetryFlow.test.ts`
+
+Casos cobertos:
+
+1. `TelemetryService` injeta e extrai `traceparent`
+2. `BullMQAdapter.publish()` coloca `traceparent` no job publicado
+
+OBSERVAÇÕES DE PROJETO
+
+1. O tracing fica desligado por padrão
+- `.env.example` inclui:
+  - `TELEMETRY_ENABLED=false`
+
+2. A ativação do tracing é explícita
+- para desenvolvimento operacional:
+  - `TELEMETRY_ENABLED=true`
+
+3. A implementação não mexe na arquitetura do D2
+- apenas adiciona observabilidade distribuída inicial
+
+RESULTADO PRÁTICO
+
+O projeto agora possui:
+
+- bootstrap de tracing
+- spans nos principais pontos do runtime de fila
+- propagação básica de contexto entre publicação e consumo
+- validação automatizada dessa base
+
+VEREDITO
+
+O D3.1 ficou implementado e validado no ambiente funcional com `npm`.
+
+Critérios atingidos:
+- tracing bootstrapado
+- `TelemetryService` criado
+- scheduler/worker/pipeline/repository/BullMQAdapter instrumentados
+- propagação básica de contexto implementada
+- `tsc`, `test` e `build` verdes no clone validado
+
+PRÓXIMO PASSO NATURAL
+
+Continuar para:
+
+- D3.2: métricas Prometheus / runtime observability ampliada
+- D3.3: logs estruturados e correlação
+- D3.4+: tracing mais profundo em HTTP / DB / Redis real, quando a infraestrutura estiver disponível

@@ -1,0 +1,96 @@
+SPRINT E2 — ENCERRAMENTO OFICIAL
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-22
+
+1. Decisão adotada
+
+A Sprint E2 foi encerrada pelo critério operacional.
+
+Isso significa:
+
+- o fallback operacional é tratado como recurso de resiliência
+- não como concessão metodológica
+- nem como falha funcional
+
+2. Atualização principal
+
+Arquivo atualizado:
+- `E2_CERTIFICATION_REPORT.md`
+
+Novo status oficial:
+- `SPRINT E2 CERTIFICADA`
+
+Formulação final do Gate E:
+- `PASS (Fallback Operacional)`
+
+3. Motivo da decisão
+
+As evidências finais mostram:
+
+- `rodada-1.log`
+  - rebuild completo
+  - stack saudável
+- `rodada-2.log`
+  - rebuild completo
+  - stack saudável
+- `rodada-3.log`
+  - falha externa no Docker Hub
+  - fallback automático corretamente ativado
+  - stack recuperada com imagem local válida
+
+Leitura de engenharia:
+
+- a aplicação continuou disponível
+- o ambiente descartável continuou recomposto
+- não houve bug funcional do projeto
+- o comportamento de fallback protege a certificação local contra indisponibilidade externa
+
+4. Artefatos criados nesta rodada
+
+- `BASELINE_FREEZE_v1.0.0-operational.md`
+- `SPRINT_E2_CLOSURE_DIFF.txt`
+
+5. Artefatos oficiais da certificação
+
+- `E2_CERTIFICATION_REPORT.md`
+- `evidencias/E2.1/`
+- `evidencias/E2.2/`
+- `evidencias/E2.3/`
+- `evidencias/E2.4/`
+- `evidencias/E2.5/`
+- `evidencias/E2.6/`
+- `scripts/start-certification-stack.ps1`
+- `scripts/validate-reproducibility.ps1`
+- `scripts/validate-fluxos.ps1`
+- `scripts/validate-observability.ps1`
+- `scripts/validate-chaos.ps1`
+- `scripts/validate-disposable.ps1`
+- `scripts/certificacao-final.ps1`
+
+6. Situação final dos gates
+
+Gate | Status final
+- A | PASS
+- B | PASS
+- C | PASS
+- D | PASS
+- E | PASS (Fallback Operacional)
+
+7. Baseline congelada
+
+Arquivo:
+- `BASELINE_FREEZE_v1.0.0-operational.md`
+
+Versão congelada:
+- `v1.0.0-operational`
+
+8. Próximo passo recomendado
+
+Não iniciar novas features imediatamente.
+
+Próxima etapa sugerida:
+
+1. operação contínua por 30 dias
+2. coleta de incidentes reais
+3. refinamento de runbooks
+4. só depois decidir E3 / GitHub / publicação

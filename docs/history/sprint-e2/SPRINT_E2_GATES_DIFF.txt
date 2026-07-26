@@ -1,0 +1,166 @@
+SPRINT E2 — EXECUÇÃO DOS GATES DE CERTIFICAÇÃO LOCAL
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-22
+
+1. Objetivo da rodada
+- Executar de verdade os gates da E2 sobre a stack local.
+- Congelar evidências em `evidencias/E2.x/`.
+- Atualizar o status da certificação com base em fatos, não em intenção.
+
+2. Estrutura criada / consolidada
+
+- `evidencias/E2.1/.gitkeep`
+- `evidencias/E2.2/.gitkeep`
+- `evidencias/E2.3/.gitkeep`
+- `evidencias/E2.4/.gitkeep`
+- `evidencias/E2.5/.gitkeep`
+- `evidencias/E2.6/.gitkeep`
+
+- `scripts/validate-observability.ps1`
+- `scripts/certificacao-final.ps1`
+- `E2_CERTIFICATION_REPORT.md`
+
+3. Ajustes feitos nesta rodada
+
+3.1) Certificação baseada na topologia real
+- Documentação ajustada para refletir que:
+  - `app`, `worker` e `scheduler` vivem no mesmo processo/container
+  - `POST /api/inbound/events` entra direto na pipeline
+  - `scheduler -> queue -> worker -> pipeline` é caminho assíncrono separado, observado por métricas
+
+3.2) Gate B ajustado
+- `scripts/validate-fluxos.ps1`
+  - grava log em `evidencias/E2.2/fluxos.log`
+  - distingue inbound direto do caminho assíncrono da fila
+  - valida:
+    - evento válido
+    - payload inválido
+    - restart da app
+    - restart do Redis
+    - restart do MySQL
+
+3.3) Gate C criado e corrigido
+- `scripts/validate-observability.ps1`
+  - grava `evidencias/E2.3/observabilidade.md`
+  - lista dashboards provisionados
+  - preenche checklist operacional com valores reais de métricas
+
+3.4) Gate D endurecido
+- `scripts/validate-chaos.ps1`
+  - garante stack em pé antes de executar chaos
+  - registra `STACK BEFORE` e `STACK AFTER`
+  - mede stop/start da app e do MySQL
+  - captura alertas após indisponibilidade da app
+
+3.5) Gate E preparado
+- `scripts/certificacao-final.ps1`
+  - três rodadas de:
+    - `down -v`
+    - `up -d --build`
+    - `ps`
+    - `/health`
+    - `validate-fluxos.ps1`
+
+4. Gates executados e resultado real
+
+4.1) Gate B — PASS
+Arquivo:
+- `evidencias/E2.2/fluxos.log`
+
+Evidência:
+- inbound válido:
+  - `pipeline_started_total`: `0 -> 1`
+  - `pipeline_completed_total`: `0 -> 1`
+- payload inválido:
+  - `HTTP 400 Bad Request`
+- restart app:
+  - `/health` voltou `healthy`
+- restart Redis:
+  - `PONG`
+- restart MySQL:
+  - `/health` voltou `healthy`
+  - métricas da fila continuaram evoluindo
+
+Observação importante:
+- o log registra explicitamente que o endpoint inbound não publica na fila; ele aciona a pipeline diretamente.
+
+4.2) Gate C — PASS
+Arquivo:
+- `evidencias/E2.3/observabilidade.md`
+
+Evidência:
+- dashboards provisionados:
+  - `Queue`
+  - `Worker`
+  - `Pipeline`
+  - `Scheduler`
+  - `DLQ`
+- perguntas operacionais respondidas via métricas e dashboards
+- sem depender de `docker logs`, `redis-cli`, `mysql` ou grep em logs para leitura de rotina
+
+4.3) Gate D — PASS
+Arquivo:
+- `evidencias/E2.4/chaos.log`
+
+Evidência:
+- app parada:
+  - Prometheus registrou alertas `WorkerStopped` e `SchedulerStopped` em `pending`
+- app voltou:
+  - `/ready` voltou `ok:true`
+- MySQL parada:
+  - POST retornou `500`
+- MySQL voltou:
+  - `/health` voltou `healthy`
+  - métricas mostraram:
+    - `retryTotal: 1`
+    - `dlqTotal: 1`
+
+Conclusão:
+- a recuperação do processo único `app+worker+scheduler` foi demonstrada
+- a recuperação do MySQL também foi demonstrada
+
+4.4) Gate E — FAIL parcial
+Arquivo:
+- `evidencias/E2.5/disposable.log`
+
+Evidência:
+- `down -v` executou
+- a rodada de `up -d --build` falhou por instabilidade externa ao projeto:
+  - `TLS handshake timeout` ao resolver `node:22-alpine` no Docker Hub
+
+Leitura correta:
+- o bloqueio aqui não aponta bug funcional do sistema
+- aponta dependência de rede/registry durante rebuild completo
+
+4.5) Gate A — PASS parcial
+Situação:
+- a reprodutibilidade já havia sido executada com sucesso em rodada anterior
+- nesta rodada a estrutura final de evidências foi consolidada
+- porém a evidência final do Gate A ainda precisa ser regravada de forma limpa na pasta definitiva, idealmente junto do Gate E
+
+5. Status final desta rodada
+
+Gate | Resultado
+- A | PASS parcial
+- B | PASS
+- C | PASS
+- D | PASS
+- E | FAIL parcial
+
+6. Veredito
+
+A `Sprint E2` ainda não pode ser encerrada como `CERTIFICADA`, mas agora está em estado muito mais objetivo:
+
+- `B`, `C` e `D` têm evidência real
+- `A` e `E` dependem de uma rodada limpa de reconstrução completa sem timeout externo no Docker Hub
+
+7. Próximo passo exato
+
+Quando a rede estiver estável:
+1. rerodar `scripts/validate-reproducibility.ps1`
+2. rerodar `scripts/validate-disposable.ps1`
+3. rodar `scripts/certificacao-final.ps1`
+4. atualizar `E2_CERTIFICATION_REPORT.md` para:
+   - `A = PASS`
+   - `E = PASS`
+   - veredito final: `SPRINT E2 CERTIFICADA`

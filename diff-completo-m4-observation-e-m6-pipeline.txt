@@ -1,0 +1,87 @@
+DIFF COMPLETO — M4 OBSERVATION + M6 OBSERVATION PIPELINE
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-20
+
+OBJETIVO DA RODADA
+Implementar o próximo passo sugerido no arquivo enviado, mantendo a disciplina da baseline 2.0:
+
+1. `Inbound` deixa de ser só “aceite” e passa a produzir `Observation`
+2. `ObservationFactory` passa a receber o DTO inteiro
+3. introduzir `ObservationPipelinePort` (porta neutra)
+4. colocar a evolução “atrás da porta” (pipeline interno), sem o HTTP conhecer `Fact`
+5. implementar pipeline mínimo gerando `Fact` internamente via `FactFactory`, sem persistência e sem `ExecutionService`
+
+VALIDAÇÃO FINAL
+- `pnpm test` -> `126/126` testes passando
+- `pnpm build` -> `OK`
+
+ARQUIVOS NOVOS
+
+Domínio:
+- `server/domain/observation.ts`
+- `server/domain/fact.ts`
+- `server/domain/factFactory.ts`
+
+Porta:
+- `server/ports/ObservationPipelinePort.ts`
+
+Aplicação:
+- `server/application/observation/ObservationPipeline.ts`
+- `server/application/observation/ObservationPipeline.test.ts`
+
+Inbound:
+- `server/inbound/ObservationFactory.ts`
+- `server/inbound/ObservationFactory.test.ts`
+
+ARQUIVOS ALTERADOS
+
+- `server/inbound/InboundService.ts`
+- `server/inbound/InboundRouter.ts`
+- `server/inbound/InboundRouter.test.ts`
+- `server/inbound/index.ts`
+- `docs/architecture/m3-inbound-http-mvp.md`
+- `docs/architecture/m2-traceability.md`
+
+O QUE MUDOU NA PRÁTICA
+
+Antes:
+- endpoint HTTP validava DTO e retornava `accepted` com `correlationId`/UUID
+
+Depois:
+- endpoint HTTP continua retornando `202 accepted`
+- mas agora o “aceite” passa por:
+  - `ObservationFactory` (DTO → Observation)
+  - `ObservationPipelinePort.process(observation)`
+  - `ObservationPipeline` (gera Fact internamente)
+
+Importante:
+- o HTTP não retorna `Fact`
+- o `Fact` não é exposto na API externa
+- o pipeline interno é o lugar onde a evolução continua
+
+SEMÂNTICA E DISCIPLINA
+
+- `Observation` e `Fact` são entidades puras de domínio (interfaces)
+- `ObservationFactory` é transformação de inbound (DTO) para domínio (Observation)
+- `FactFactory` é transformação de domínio (Observation → Fact)
+- `ObservationPipeline` é camada de aplicação
+- sem persistência (sem Event Store) nesta rodada
+- sem orquestração do `ExecutionService` nesta rodada
+
+IMPACTO NA SUÍTE
+
+Antes:
+- `123/123`
+
+Depois:
+- `126/126`
+
+NOVOS TESTES
+- unitário do `ObservationFactory`
+- unitário do `ObservationPipeline`
+- ajustes no teste do router para o novo método `processEvent`
+
+PRÓXIMO PASSO NATURAL
+- persistir `Observation` (Event Store / repository)
+- decidir quais `Facts` derivar e quando
+- conectar `Fact` ao `ExecutionService` quando o pipeline tiver persistência e auditabilidade mínimas

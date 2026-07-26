@@ -1,0 +1,306 @@
+DIFF COMPLETO DO MARCO 2 — EXECUTION LEDGER E EXECUTION SERVICE
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-20
+
+OBJETIVO
+Executar o próximo bloco útil do Marco 2 sem tentar puxar todas as epics de uma vez:
+- criar o ledger oficial de execução
+- separar a execução do envio direto
+- persistir transições de estado da execução
+- integrar o fluxo real de maturação ao novo serviço
+- expor o ledger recente no painel
+
+ESCOPO ESCOLHIDO
+Em vez de tentar implementar todas as epics do arquivo de uma vez, foi fechado o núcleo de maior valor imediato:
+
+1. `behavior_action_execution`
+2. `ExecutionService`
+3. evento separado de `ActionExecuted`
+4. integração do envio de mensagem do fluxo de maturação
+5. visibilidade no `Control Center`
+
+Esse recorte mantém o projeto evoluindo sem inflar a arquitetura.
+
+VALIDAÇÃO FINAL
+- `pnpm test` -> `64/64` testes passando
+- `21` arquivos de teste
+- `pnpm build` -> `OK`
+
+ARQUIVOS NOVOS
+
+1. `server/services/behavior/executionService.ts`
+O que foi criado:
+- `executeBehaviorAction(...)`
+- `createBehaviorExecutionRecord(...)`
+- tipos:
+  - `BehaviorExecutionStatus`
+  - `BehaviorBudgetState`
+  - `BehaviorExecutionRecord`
+  - `BehaviorExecutionResult`
+
+Fluxo implementado:
+- cria registro `PENDING`
+- move budget para `RESERVED`
+- executa envio via executor injetável
+- persiste `SENT`
+- persiste `ACKED`
+- em falha persiste `FAILED` + `RELEASED`
+- emite `ActionExecutedEvent`
+
+Características importantes:
+- usa `crypto.randomUUID()` para `decisionId` e `executionId`
+- aceita dependências injetáveis para teste
+- o executor real padrão usa `sendMessage(...)`
+
+Efeito prático:
+- o envio deixou de existir apenas como side effect do fluxo
+- agora há uma trilha oficial e separada da decisão
+
+2. `server/services/behavior/executionService.test.ts`
+O que foi criado:
+- teste de sucesso:
+  - PENDING -> RESERVED -> SENT -> ACKED
+- teste de falha:
+  - PENDING -> RESERVED -> FAILED + RELEASED
+
+Efeito prático:
+- a nova orquestração principal de execução já nasce com cobertura dedicada
+
+3. `drizzle/0006_behavior_action_execution.sql`
+O que foi criado:
+- migration da nova tabela `behavior_action_execution`
+
+Campos principais:
+- `id`
+- `decisionId`
+- `userId`
+- `chipId`
+- `requestedAction`
+- `targetType`
+- `targetValue`
+- `messageId`
+- `status`
+- `budgetState`
+- `attempt`
+- `payload`
+- `error`
+- `createdAt`
+- `sentAt`
+- `ackAt`
+- `updatedAt`
+
+Efeito prático:
+- o ledger ficou formalizado também como migration
+
+ARQUIVOS ALTERADOS
+
+4. `drizzle/schema.ts`
+O que mudou:
+- adicionei a tabela `behavior_action_execution`
+- criei os tipos inferidos:
+  - `BehaviorActionExecution`
+  - `InsertBehaviorActionExecution`
+
+Decisão importante:
+- a PK ficou como `VARCHAR(64)` para suportar `UUID`
+- `status` usa enum:
+  - `PENDING`
+  - `SENT`
+  - `ACKED`
+  - `FAILED`
+  - `RETRYING`
+- `budgetState` usa enum:
+  - `NOT_RESERVED`
+  - `RESERVED`
+  - `COMMITTED`
+  - `RELEASED`
+
+Efeito prático:
+- o schema agora separa claramente decisão de execução
+
+5. `server/db.ts`
+O que mudou:
+- importei `behaviorActionExecution`
+- adicionei a flag interna `_behaviorActionExecutionTableEnsured`
+- criei `ensureBehaviorActionExecutionTable()`
+- criei helpers:
+  - `createBehaviorActionExecution(...)`
+  - `updateBehaviorActionExecution(...)`
+  - `getBehaviorActionExecutionByDecisionId(...)`
+  - `listBehaviorActionExecutionsByChip(...)`
+
+O que o ensure faz:
+- cria a tabela caso não exista
+- cria índices úteis por:
+  - chip + createdAt
+  - decisionId
+  - status
+
+Efeito prático:
+- o runtime passa a ter um ledger persistido mesmo em ambiente ainda não migrado manualmente
+
+6. `server/services/behavior/dispatcher.ts`
+O que mudou:
+- mantive o fluxo de `PolicyEvaluated`
+- adicionei um contrato separado para execução:
+  - `ActionExecutedEvent`
+- adicionei:
+  - `onActionExecuted(handler)`
+  - `notifyActionExecuted(event)`
+
+Motivo:
+- o arquivo enviado estava certo neste ponto: decisão e execução não devem compartilhar um contrato nebuloso
+
+Efeito prático:
+- o dispatcher agora tem dois canais claros:
+  - decisão avaliada
+  - ação executada
+
+7. `server/services/behavior/logger.ts`
+O que mudou:
+- o logger passou a se registrar também em `onActionExecuted(...)`
+- adicionei um handler de execução com saída estruturada no console
+
+O que ele registra:
+- chip
+- executionId
+- decisionId
+- action
+- status
+- budgetState
+- messageId
+- erro, se houver
+
+Efeito prático:
+- a execução agora não fica muda
+- o ledger vive no banco e o evento também aparece no console operacional
+
+8. `server/services/maturationEngine.ts`
+O que mudou:
+- removi o envio direto via `sendMessage(...)` no trecho principal de maturação real
+- integrei `executeBehaviorAction(...)`
+- mantive o restante do fluxo compatível:
+  - `executionAttempt`
+  - atualização de attempt
+  - lógica de reação separada
+
+O que isso significa:
+- o fluxo real de mensagem agora passa pelo `ExecutionService`
+- o ledger recebe:
+  - criação da execução
+  - reserva de budget
+  - envio
+  - ack lógico
+  - falha/release, se necessário
+
+O que ainda não foi mexido:
+- reação ainda segue pelo fluxo antigo
+- isso foi intencional para manter a mudança focada
+
+Efeito prático:
+- existe agora pelo menos um caminho real do sistema usando o novo núcleo
+
+9. `server/services/controlCenterService.ts`
+O que mudou:
+- importei `listBehaviorActionExecutionsByChip(...)`
+- adicionei `recentActionExecutions` ao `ControlCenterChipDetail`
+- passei a carregar as execuções recentes no `getChipDetail(...)`
+
+Efeito prático:
+- o detalhe do chip ganhou leitura do ledger de execução
+
+10. `client/src/pages/ControlCenter.tsx`
+O que mudou:
+- adicionei o card `Execution Ledger recente` no detalhe do chip
+
+O que ele mostra:
+- status da execução
+- ação pedida
+- budgetState
+- tentativa
+- target
+- messageId
+- erro, quando existir
+
+Efeito prático:
+- o painel passou a mostrar uma parte do ciclo operacional real
+- deixa de depender só de decisão e snapshot
+
+O QUE FOI ENTREGUE FUNCIONALMENTE
+- tabela oficial de execução comportamental
+- CRUD mínimo do ledger no backend
+- serviço de execução separado da decisão
+- contrato de evento separado para `ActionExecuted`
+- integração do novo executor no fluxo real de maturação
+- visualização do ledger recente no `Control Center`
+
+O QUE AINDA NÃO FOI FEITO NESTA RODADA
+- RetryService real
+- Budget Reservation transacional completa
+- ACK assíncrono de provedor
+- Inbound Handler
+- Event Store completo
+- WhatsApp Gateway abstraído em interface própria
+
+MOTIVO
+- a rodada foi focada em fechar o primeiro caminho operacional útil
+- isso evita tentar implantar o Marco 2 inteiro de uma vez
+
+DECISÕES IMPORTANTES
+
+Separação entre decisão e execução
+- feita de forma concreta:
+  - decision continua no motor
+  - execution agora vive em serviço próprio
+
+ID estável
+- foi adotado `randomUUID()`
+- evita depender de `nextCheckAt` ou delay para formar identidade
+
+Ledger oficial
+- nenhuma execução nova do caminho integrado depende só de memória
+- há registro persistido
+
+Set local vs idempotência real
+- não foi introduzido `inFlight` novo como garantia
+- a garantia desta rodada vem do ledger persistido
+
+GANHO ARQUITETURAL
+Antes:
+- o sistema decidia
+- e enviava quase no mesmo lugar
+- com rastreio parcial distribuído
+
+Depois:
+- o sistema decide
+- cria uma execução persistida
+- executa
+- atualiza estado
+- emite evento separado
+- mostra o resultado no painel
+
+GANHO OPERACIONAL
+Agora já existe um começo concreto do fluxo:
+- decisão
+- execução
+- ACK lógico
+- persistência
+- painel
+
+Ainda falta inbound e evolução de trust ponta a ponta, mas o projeto saiu de "envio acoplado" para "execução rastreável".
+
+LISTA CONSOLIDADA DOS ARQUIVOS IMPACTADOS
+- `drizzle/schema.ts`
+- `drizzle/0006_behavior_action_execution.sql`
+- `server/db.ts`
+- `server/services/behavior/dispatcher.ts`
+- `server/services/behavior/logger.ts`
+- `server/services/behavior/executionService.ts`
+- `server/services/behavior/executionService.test.ts`
+- `server/services/maturationEngine.ts`
+- `server/services/controlCenterService.ts`
+- `client/src/pages/ControlCenter.tsx`
+
+VEREDITO
+Esta rodada fecha a primeira metade correta do Marco 2.
+Ainda não é o "Operational Core" completo, mas já é o ponto em que a execução deixa de ser apenas um efeito lateral e passa a ser um objeto operacional do sistema.

@@ -1,0 +1,94 @@
+name: deploy-production
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy-production:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Preflight local
+        run: |
+          cp .env.production.example .env.production
+          echo "DATABASE_URL=${{ secrets.PROD_DATABASE_URL }}" >> .env.production
+          echo "REDIS_URL=${{ secrets.PROD_REDIS_URL }}" >> .env.production
+          echo "JWT_SECRET=${{ secrets.PROD_JWT_SECRET }}" >> .env.production
+          echo "COOKIE_SECRET=${{ secrets.PROD_COOKIE_SECRET }}" >> .env.production
+          echo "SESSION_SECRET=${{ secrets.PROD_SESSION_SECRET }}" >> .env.production
+          echo "SECRETS_MASTER_KEY=${{ secrets.PROD_SECRETS_MASTER_KEY }}" >> .env.production
+          echo "OAUTH_SERVER_URL=${{ secrets.PROD_OAUTH_SERVER_URL }}" >> .env.production
+          echo "VITE_OAUTH_PORTAL_URL=${{ secrets.PROD_VITE_OAUTH_PORTAL_URL }}" >> .env.production
+          echo "VITE_APP_ID=${{ secrets.PROD_VITE_APP_ID }}" >> .env.production
+          echo "APP_DOMAIN=${{ secrets.PROD_APP_DOMAIN }}" >> .env.production
+          echo "GRAFANA_DOMAIN=${{ secrets.PROD_GRAFANA_DOMAIN }}" >> .env.production
+          chmod +x scripts/release/*.sh scripts/backup/*.sh
+          bash scripts/release/preflight-production.sh
+
+      - name: Create release bundle
+        run: |
+          tar \
+            --exclude=.git \
+            --exclude=node_modules \
+            --exclude=.cache \
+            --exclude=backups \
+            --exclude=validation_logs \
+            -czf release.tgz .
+
+      - name: Upload release bundle
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.PROD_SERVER_HOST }}
+          username: ${{ secrets.PROD_SERVER_USER }}
+          key: ${{ secrets.PROD_SERVER_SSH_KEY }}
+          port: ${{ secrets.PROD_SERVER_PORT }}
+          source: "release.tgz"
+          target: ${{ secrets.PROD_APP_PATH }}/incoming
+
+      - name: Deploy on server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.PROD_SERVER_HOST }}
+          username: ${{ secrets.PROD_SERVER_USER }}
+          key: ${{ secrets.PROD_SERVER_SSH_KEY }}
+          port: ${{ secrets.PROD_SERVER_PORT }}
+          script_stop: true
+          script: |
+            set -e
+            APP_PATH='${{ secrets.PROD_APP_PATH }}'
+            RELEASE_DIR="$APP_PATH/releases/${{ github.sha }}"
+            mkdir -p "$APP_PATH"/{incoming,releases,shared/backups}
+            rm -rf "$RELEASE_DIR"
+            mkdir -p "$RELEASE_DIR"
+            tar -xzf "$APP_PATH/incoming/release.tgz" -C "$RELEASE_DIR"
+            cd "$RELEASE_DIR"
+            printf '%s' '${{ secrets.PROD_ENV_FILE }}' > .env.production
+            chmod +x scripts/release/*.sh scripts/backup/*.sh
+            bash scripts/release/deploy-production.sh
+
+      - name: Rollback on remote failure
+        if: failure()
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.PROD_SERVER_HOST }}
+          username: ${{ secrets.PROD_SERVER_USER }}
+          key: ${{ secrets.PROD_SERVER_SSH_KEY }}
+          port: ${{ secrets.PROD_SERVER_PORT }}
+          script_stop: false
+          script: |
+            set -e
+            cd '${{ secrets.PROD_APP_PATH }}/releases/${{ github.sha }}' || exit 0
+            bash scripts/release/rollback-production.sh || true

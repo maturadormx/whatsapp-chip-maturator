@@ -1,0 +1,35 @@
+{
+  "id": null,
+  "uid": "dlq-dashboard",
+  "title": "DLQ",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 2,
+  "refresh": "10s",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Tamanho atual da DLQ",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 6 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [{ "expr": "dlq_current_size", "refId": "A" }]
+    },
+    {
+      "type": "stat",
+      "title": "Jobs totais na DLQ",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 6 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [{ "expr": "dlq_jobs_total", "refId": "A" }]
+    },
+    {
+      "type": "timeseries",
+      "title": "Evolução da DLQ",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        { "expr": "dlq_current_size", "legendFormat": "current size", "refId": "A" },
+        { "expr": "increase(dlq_jobs_total[5m])", "legendFormat": "new jobs / 5m", "refId": "B" }
+      ]
+    }
+  ]
+}

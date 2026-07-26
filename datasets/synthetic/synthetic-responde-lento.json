@@ -1,0 +1,25 @@
+{
+  "datasetId": "synthetic-responde-lento",
+  "description": "Recebe e responde com grande atraso.",
+  "replayedAt": "2026-07-16T18:00:00.000Z",
+  "rawEvents": [
+    {
+      "eventType": "message_received",
+      "source": "messages.upsert",
+      "direction": "inbound",
+      "occurredAt": "2026-07-16T09:00:00.000Z",
+      "remoteJid": "5511999999999@s.whatsapp.net",
+      "remoteType": "contact",
+      "remoteLabel": "Contato Sintético"
+    },
+    {
+      "eventType": "message_sent",
+      "source": "synthetic_outbound",
+      "direction": "outbound",
+      "occurredAt": "2026-07-16T12:30:00.000Z",
+      "remoteJid": "5511999999999@s.whatsapp.net",
+      "remoteType": "contact",
+      "remoteLabel": "Contato Sintético"
+    }
+  ]
+}

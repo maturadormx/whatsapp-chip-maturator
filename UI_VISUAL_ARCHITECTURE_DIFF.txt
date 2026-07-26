@@ -1,0 +1,623 @@
+DIFF — ARQUITETURA VISUAL E ESTRUTURAL COMPLETA
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-22
+
+1. Objetivo
+
+Este diff documenta a parte visual inteira do sistema:
+
+- arquitetura estrutural do frontend
+- rotas e superfícies principais
+- navegação global
+- sidebars
+- abas, âncoras e modos de tela
+- padrões visuais reutilizados
+- diferenças entre sistema 1, sistema 2, central admin e áreas utilitárias
+
+2. Estrutura base do frontend
+
+Entradas principais:
+- `client/index.html`
+- `client/src/main.tsx`
+- `client/src/App.tsx`
+
+Camadas estruturais:
+- bootstrap React via `main.tsx`
+- roteamento com `wouter`
+- providers globais:
+  - `ThemeProvider`
+  - `TooltipProvider`
+  - `Toaster`
+  - `ErrorBoundary`
+
+Comportamento global:
+- `Navbar` fica visível em todo o app
+- exceção: `/login`
+- `EntryRoute` redireciona automaticamente conforme role
+- telas administrativas usam `AdminOnly`
+
+3. Arquitetura de navegação
+
+3.1) Rotas principais
+
+Mapa de rotas em `client/src/App.tsx`:
+
+- `/` → entrada dinâmica por role
+- `/workspace` → área do usuário comum
+- `/admin-systems` → central administrativa dos dois sistemas
+- `/system-demo` → demo institucional/ecossistema
+- `/dashboard` e `/maturation` → sistema 1 / maturação
+- `/bulk-dispatch` e `/marketing` → sistema 2 / marketing
+- `/reports` → relatórios
+- `/operations` → operação
+- `/runtime` → runtime
+- `/control-center` + subrotas → painel estrutural central
+- `/plans` → planos
+- `/profile` → perfil
+- `/connect-chip` → conexão de chip
+- `/logs` → logs
+- `/profiles` → perfis
+- `/admin` → dashboard administrativo
+- `/login` → autenticação
+- `/404` → não encontrado
+
+3.2) Guardas de acesso
+
+Diferença estrutural importante:
+
+- usuário comum:
+  - `workspace`
+  - `plans`
+  - `profile`
+- admin:
+  - central completa
+  - sistemas operacionais
+  - relatórios
+  - runtime
+  - painel admin
+  - control center
+
+4. Navegação global superior
+
+Arquivo-base:
+- `client/src/components/Navbar.tsx`
+
+4.1) Papel visual do navbar
+
+O navbar é a barra principal sticky do sistema.
+Ele separa claramente:
+
+- branding `W.M.S.E / M13 Group`
+- navegação de alto nível
+- menu de usuário/autenticação
+
+4.2) Itens globais para admin
+
+Itens principais:
+- `Central`
+- `Painel`
+- `Maturação`
+- `Planos`
+- `Conectar`
+- `Runtime`
+- `Logs`
+- `Perfis`
+- `Marketing`
+- `Relatórios`
+- botão adicional `Admin`
+
+Codificação visual:
+- `/admin-systems` usa destaque cyan
+- `/dashboard` usa destaque emerald
+- `/bulk-dispatch` usa destaque fuchsia
+- demais itens usam cyan/branco neutro
+
+4.3) Itens globais para usuário comum
+
+- `Início`
+- `Planos`
+- `Perfil`
+
+4.4) Responsividade
+
+Desktop:
+- links horizontais visíveis
+
+Mobile:
+- menu recolhido via `DropdownMenu`
+- o painel admin entra como item adicional
+
+4.5) Menu do usuário
+
+Inclui:
+- nome e avatar
+- `Meu Perfil`
+- `Configurações`
+- `Painel Admin` para admin
+- `Sair`
+
+5. Sidebars e navegação lateral
+
+Há dois modelos distintos de sidebar.
+
+5.1) `DashboardLayout`
+
+Arquivo:
+- `client/src/components/DashboardLayout.tsx`
+
+Características:
+- sidebar colapsável por ícone
+- largura redimensionável
+- estado persistido em `localStorage`
+- modo mobile com `SidebarTrigger`
+- menu genérico de navegação
+
+Função estrutural:
+- é um layout genérico de dashboard
+- menos conectado à narrativa comercial dos dois sistemas
+- mais próximo de shell administrativo clássico
+
+5.2) `SystemSidebar`
+
+Arquivo:
+- `client/src/components/SystemSidebar.tsx`
+
+Este é o componente visual mais importante da arquitetura atual dos sistemas.
+
+Dois perfis:
+
+- `maturation`
+- `marketing`
+
+Sistema 1 / Maturação:
+- `Central admin`
+- `Visão geral`
+- `Conectar chips`
+- `Perfis`
+- `Operação`
+- `Logs`
+- `Relatórios`
+
+Sistema 2 / Marketing:
+- `Central admin`
+- `Campanhas`
+- `Fila e agenda`
+- `Análises`
+- `Lista de bloqueio`
+- `Relatórios`
+
+Diferença estrutural:
+- sistema 1 usa acento emerald
+- sistema 2 usa acento fuchsia
+- a sidebar já funciona como separador mental entre os produtos
+
+6. Linguagem visual global
+
+Padrões recorrentes encontrados nas páginas:
+
+- `app-shell`
+- `bg-app-grid`
+- `page-container`
+- `page-breadcrumb`
+- `page-hero`
+- `page-title`
+- `page-subtitle`
+- `card-premium-enhanced`
+- `card-premium`
+- `status-banner`
+- `summary-grid`
+- `summary-pill`
+
+Leitura da linguagem visual:
+
+- fundo dark com grid técnico
+- headers com breadcrumb + hero textual
+- cartões premium com brilho/borda
+- semântica por cor:
+  - cyan = central / navegação / leitura sistêmica
+  - emerald = sistema 1 / maturação / estado saudável
+  - fuchsia = sistema 2 / marketing / execução comercial
+  - blue = admin e analytics auxiliares
+
+7. Mapa de telas
+
+7.1) `AdminSystemsHub`
+
+Função:
+- landing page central do ecossistema
+- hub de decisão entre sistema 1 e sistema 2
+
+Papel visual:
+- tela de comutação estratégica
+- apresenta os sistemas como produtos independentes
+- organiza narrativa de entrada
+
+7.2) `SystemDemo`
+
+Função:
+- tela de apresentação institucional
+- explica o ecossistema em modo demonstrativo
+
+Componentes visuais:
+- hero de demo
+- métricas simplificadas
+- cards comparando sistema 1 e sistema 2
+- steps narrativos
+
+7.3) `Dashboard`
+
+Função:
+- visão geral do sistema 1
+
+Estrutura esperada pela árvore atual:
+- overview operacional da maturação
+- saúde, progresso, prontidão
+- acesso para conexão de chip e evolução operacional
+
+Papel visual:
+- cockpit emerald
+
+7.4) `ConnectChip`
+
+Função:
+- onboarding operacional do chip
+
+Estrutura visual muito clara:
+- breadcrumb
+- hero
+- banner de status
+- grid com:
+  - formulário à esquerda
+  - QR / estado à direita
+
+Estados principais:
+- não autenticado
+- pronto para iniciar
+- gerando QR
+- sessão ativa
+- conectado com sucesso
+
+Opções visuais:
+- iniciar conexão
+- atualizar QR
+- voltar à maturação
+- ir para login
+- ir para dashboard
+
+7.5) `Profiles`
+
+Função:
+- configuração de perfis no sistema 1
+
+Papel visual:
+- parametrização operacional
+- fica no eixo “base / comportamento / configuração”
+
+7.6) `Operations`
+
+Função:
+- operação do sistema 1
+
+Papel:
+- leitura operacional
+- acompanhamento de execução
+- provável visão de tarefas/processos/situação
+
+7.7) `Logs`
+
+Função:
+- inspeção de logs
+
+Papel:
+- observabilidade textual
+- troubleshooting
+
+7.8) `Reports`
+
+Função:
+- camada de leitura consolidada
+
+Papel:
+- dashboards/resumos/indicadores
+- reaproveitável por sistema 1 e 2
+
+7.9) `BulkDispatch`
+
+Função:
+- tela principal do sistema 2
+
+Estruturalmente é uma das telas mais densas do produto.
+
+Âncoras explícitas na navegação lateral:
+- `#fila`
+- `#analytics`
+- `#blacklist`
+
+Isso indica ao menos quatro zonas visuais no mesmo container:
+- campanhas
+- fila e agenda
+- análises
+- lista de bloqueio
+
+Papel visual:
+- cockpit fuchsia de operação comercial
+
+7.10) `RuntimeConsole`
+
+Função:
+- console técnico
+
+Papel:
+- leitura de runtime/worker/processos
+- visão de camada técnica
+
+7.11) `ControlCenter`
+
+Função:
+- painel estrutural central
+
+Rotas relacionadas:
+- `/control-center`
+- `/control-center/fleet`
+- `/control-center/workers`
+- `/control-center/reconciliation`
+- `/control-center/admin`
+- `/control-center/security`
+- `/control-center/chip/:legacyChipId`
+
+Diferença importante:
+- é a tela mais “arquitetural” do produto
+- concentra várias subáreas operacionais
+- funciona como metapainel
+
+Subdomínios explícitos:
+- fleet
+- workers
+- reconciliation
+- admin
+- security
+- chip específico
+
+7.12) `AdminDashboard`
+
+Função:
+- dashboard administrativo corporativo
+
+Evidência estrutural forte:
+- possui `activeTab`
+- filtros:
+  - busca
+  - role
+  - account
+  - subscription
+  - owner
+- dialogs:
+  - assinatura
+  - edição de plano
+
+Tabs e macroáreas:
+- ao menos `overview`
+- gestão de usuários
+- planos
+- chips/empresa
+- logs de auditoria
+- insights comerciais
+
+Padrões visuais:
+- KPIs
+- badges de assinatura
+- badges de chip
+- tabela
+- gráficos com `recharts`
+- estados vazios e skeletons
+
+7.13) `Plans`
+
+Função:
+- catálogo / gestão de planos
+
+Papel:
+- comercial/assinatura
+- ponte entre usuário comum e administração
+
+7.14) `Profile`
+
+Função:
+- perfil do usuário
+
+Papel:
+- preferências pessoais
+- identidade de conta
+
+7.15) `UserWorkspace`
+
+Função:
+- home do usuário comum
+
+Papel:
+- ponto de entrada não-admin
+- versão simplificada do produto
+
+7.16) `Login`
+
+Função:
+- autenticação
+
+Diferença estrutural:
+- única tela sem navbar global
+- serve como portal isolado de acesso
+
+8. Abas, modos e subnavegação
+
+8.1) Abas identificadas diretamente
+
+Em `AdminDashboard.tsx`:
+- estado `activeTab = "overview"`
+- portanto há arquitetura em tabs internas
+
+Em outras páginas:
+- há uso recorrente de `TabsList`, `TabsTrigger`, `TabsContent` no frontend
+- isso confirma múltiplas superfícies com navegação interna em tabs
+
+8.2) Subrotas estruturais
+
+`ControlCenter` é roteado por subrotas.
+Na prática isso equivale a abas estruturais dirigidas por URL:
+
+- visão geral
+- fleet
+- workers
+- reconciliation
+- admin
+- security
+- chip detalhado
+
+8.3) Âncoras internas
+
+`BulkDispatch` possui navegação com hash:
+
+- `#fila`
+- `#analytics`
+- `#blacklist`
+
+Isso indica scroll/navigation intra-page orientada por seções.
+
+9. Componentes reutilizáveis que moldam o visual
+
+Biblioteca UI:
+- `Button`
+- `Input`
+- `Card`
+- `Dialog`
+- `DropdownMenu`
+- `Avatar`
+- `Checkbox`
+- `ChartContainer`
+- `ChartTooltip`
+- `Sidebar`
+- `Toaster`
+- `Tooltip`
+
+Componentes de estado:
+- `AdminEmptyState`
+- `AdminSkeletonGrid`
+- `AdminSkeletonTable`
+- `DashboardLayoutSkeleton`
+
+Componentes de arquitetura:
+- `Navbar`
+- `SystemSidebar`
+- `DashboardLayout`
+- `ErrorBoundary`
+
+10. Diferença estrutural entre os blocos do produto
+
+10.1) Central admin
+
+Tom:
+- cyan
+
+Função:
+- entrada
+- comutação
+- leitura de ecossistema
+
+10.2) Sistema 1
+
+Tom:
+- emerald
+
+Função:
+- base operacional
+- saúde
+- perfis
+- chips
+- estabilidade
+
+10.3) Sistema 2
+
+Tom:
+- fuchsia
+
+Função:
+- campanhas
+- fila
+- agenda
+- blacklist
+- analytics
+
+10.4) Admin corporativo
+
+Tom:
+- azul/cyan neutro
+
+Função:
+- usuários
+- planos
+- receita
+- auditoria
+- governança
+
+10.5) Runtime/control center
+
+Tom:
+- técnico
+
+Função:
+- leitura estrutural
+- reconciliação
+- segurança
+- workers
+- fleet
+
+11. Diferenças estruturais relevantes
+
+Comparação principal:
+
+| Camada | Navegação | Cor dominante | Papel |
+|---|---|---|---|
+| Central admin | Hub + cards | Cyan | Entrada e escolha |
+| Sistema 1 | Sidebar dedicada | Emerald | Maturação e operação |
+| Sistema 2 | Sidebar dedicada + hashes | Fuchsia | Marketing e execução |
+| Admin | Tabs + filtros + gráficos | Azul/Cyan | Gestão corporativa |
+| Control Center | Subrotas estruturais | Neutro técnico | Arquitetura operacional |
+
+12. Conclusão do diff visual
+
+A arquitetura visual do produto não é monolítica.
+Ela foi organizada em cinco superfícies diferentes:
+
+- portal de entrada
+- sistema 1
+- sistema 2
+- camada administrativa
+- camada estrutural/técnica
+
+O desenho geral já mostra uma intenção forte de produto:
+
+- separar “base operacional” de “execução comercial”
+- manter uma central única de entrada
+- dar à administração um painel próprio
+- reservar ao runtime/control center uma camada mais técnica e estrutural
+
+13. Artefatos-fontes inspecionados
+
+Arquivos principais usados neste diff:
+- `client/src/App.tsx`
+- `client/src/components/Navbar.tsx`
+- `client/src/components/SystemSidebar.tsx`
+- `client/src/components/DashboardLayout.tsx`
+- `client/src/pages/AdminSystemsHub.tsx`
+- `client/src/pages/SystemDemo.tsx`
+- `client/src/pages/Dashboard.tsx`
+- `client/src/pages/ConnectChip.tsx`
+- `client/src/pages/BulkDispatch.tsx`
+- `client/src/pages/Reports.tsx`
+- `client/src/pages/Operations.tsx`
+- `client/src/pages/RuntimeConsole.tsx`
+- `client/src/pages/ControlCenter.tsx`
+- `client/src/pages/AdminDashboard.tsx`
+- `client/src/pages/Plans.tsx`
+- `client/src/pages/Profile.tsx`
+- `client/src/pages/UserWorkspace.tsx`
+- `client/src/pages/Login.tsx`

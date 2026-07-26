@@ -1,0 +1,122 @@
+DIFF COMPLETO — FASE 2 / COMMIT 4 / DOCUMENTAÇÃO DO MESSAGEGATEWAY
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-20
+
+OBJETIVO DA RODADA
+Executar o `Commit 4` da Fase 2:
+
+- criar a ADR da abstração `MessageGateway`
+- atualizar a rastreabilidade do Marco 2 com a Fase 2
+- consolidar um documento próprio da Fase 2
+
+RESULTADO FINAL
+- a decisão arquitetural do gateway foi formalizada
+- a rastreabilidade agora cobre Fase 1 e Fase 2
+- a Fase 2 ganhou documento próprio consolidado
+- a base continuou verde
+
+VALIDAÇÃO FINAL
+- `pnpm test` -> `105/105` testes passando
+- `pnpm build` -> `OK`
+
+ARQUIVOS NOVOS
+
+1. `docs/architecture/adr-002-message-gateway.md`
+O que foi criado:
+- ADR da abstração `MessageGateway`
+
+Conteúdo principal:
+- contexto do acoplamento anterior
+- decisão da interface pura
+- consequências positivas e negativas
+- alternativas rejeitadas
+- regras do contrato
+- histórico de implementação por commits
+
+Pontos formalizados:
+- `ExecutionService` não deve conhecer transporte concreto
+- `MessageGateway` é abstração pura
+- nenhuma lógica de retry, budget ou negócio no gateway
+
+Efeito prático:
+- a abstração da Fase 2 agora está registrada como decisão arquitetural explícita
+
+2. `docs/architecture/m2-fase2-gateway.md`
+O que foi criado:
+- documento dedicado da Fase 2
+
+Conteúdo principal:
+- objetivo da fase
+- arquitetura em camadas
+- contratos do gateway
+- regras da abstração
+- resumo dos quatro commits
+- estado atual da validação
+
+Efeito prático:
+- a Fase 2 passou a ter um documento de leitura rápida e consolidada
+
+ARQUIVOS ALTERADOS
+
+3. `docs/architecture/m2-traceability.md`
+O que mudou:
+- o documento deixou de falar apenas da Fase 1
+- agora cobre explicitamente:
+  - Fase 1 — Núcleo Operacional
+  - Fase 2 — MessageGateway
+
+Seção adicionada:
+- tabela da Fase 2 com:
+  - `MessageGateway`
+  - `OutboundMessage`
+  - `GatewayResult`
+  - injeção no `ExecutionService`
+  - `FakeMessageGateway`
+  - integração `ExecutionService -> Gateway`
+  - ADR/documentação
+
+Efeito prático:
+- a rastreabilidade do Marco 2 ficou contínua entre as fases
+
+O QUE FOI PRESERVADO DE PROPÓSITO
+- nenhum ajuste de comportamento
+- nenhuma mudança em `ExecutionService`
+- nenhum teste novo além dos já entregues no Commit 3
+- nenhuma implementação concreta de gateway
+
+Motivo:
+- esta rodada foi estritamente documental
+- o objetivo foi fechar a Fase 2 com governança e rastreabilidade, não expandir o domínio
+
+GANHO ARQUITETURAL
+Antes:
+- a abstração do gateway existia no código e nos testes
+- mas ainda faltava a decisão formal e a documentação consolidada
+
+Depois:
+- a Fase 2 passa a existir em três camadas coerentes:
+  - código
+  - testes
+  - decisão/documentação
+
+Isso reduz risco de regressão conceitual e facilita a abertura dos próximos incrementos:
+- `MockGateway`
+- `Clock`
+- integrações concretas
+
+ESTADO FINAL DA FASE 2
+
+| Commit | Descrição | Status |
+|---|---|---|
+| 1 | Contratos | ✅ |
+| 2 | Injeção | ✅ |
+| 3 | Testes | ✅ |
+| 4 | Documentação | ✅ |
+
+LISTA CONSOLIDADA DOS ARQUIVOS IMPACTADOS
+- `docs/architecture/adr-002-message-gateway.md`
+- `docs/architecture/m2-traceability.md`
+- `docs/architecture/m2-fase2-gateway.md`
+
+VEREDITO
+Esta rodada conclui corretamente o `Commit 4` da Fase 2. A abstração `MessageGateway` agora está completa em termos de implementação, validação e documentação. Com isso, a Fase 2 pode ser considerada fechada localmente, e o próximo marco natural passa a ser a próxima abstração isolada prevista no roadmap, sem reabrir o núcleo já estabilizado.

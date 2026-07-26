@@ -1,0 +1,239 @@
+{
+  "generated_at": "2026-07-19T00:03:24.697Z",
+  "chips": [
+    {
+      "legacy_chip_id": 4,
+      "official_chip_id": "legacy-user-1-chip-4",
+      "legacy_snapshot": {
+        "id": 4,
+        "userId": 1,
+        "chipName": "casa",
+        "phoneNumber": "556596011310",
+        "status": "desconectado",
+        "maturationProfile": "normal",
+        "sessionData": null,
+        "qrCode": null,
+        "isPaused": 0,
+        "lastActivity": null,
+        "createdAt": "2026-07-13T17:14:27.000Z",
+        "updatedAt": "2026-07-18T23:48:46.000Z"
+      },
+      "official_events": [
+        {
+          "event_id": "29ede6bb-ba4a-4b18-a9cb-0cf7bb3b2699",
+          "chip_id": "legacy-user-1-chip-4",
+          "event_type": "chip_created",
+          "event_version": 1,
+          "sequence": 1,
+          "occurred_at": "2026-07-13T17:14:27.000Z",
+          "recorded_at": "2026-07-18T23:50:45.000Z",
+          "payload": {
+            "created_by": "legacy_migration",
+            "sprint": 0
+          }
+        },
+        {
+          "event_id": "854d6372-0afe-464f-9d6b-da34fc638016",
+          "chip_id": "legacy-user-1-chip-4",
+          "event_type": "chip_paired",
+          "event_version": 1,
+          "sequence": 2,
+          "occurred_at": "2026-07-18T23:48:46.000Z",
+          "recorded_at": "2026-07-18T23:50:45.000Z",
+          "payload": {
+            "paired_with": "556596011310",
+            "device_id": "casa"
+          }
+        }
+      ],
+      "replay": {
+        "current_state": "PAREADO",
+        "previous_state": "PAREADO",
+        "last_sequence": 2,
+        "inconsistencies": [],
+        "processed_events": 2,
+        "transitions_applied": 2,
+        "transition_log": [
+          {
+            "sequence": 1,
+            "event_id": "29ede6bb-ba4a-4b18-a9cb-0cf7bb3b2699",
+            "event_type": "chip_created",
+            "from_state": null,
+            "to_state": "CRIADO"
+          },
+          {
+            "sequence": 2,
+            "event_id": "854d6372-0afe-464f-9d6b-da34fc638016",
+            "event_type": "chip_paired",
+            "from_state": "CRIADO",
+            "to_state": "PAREADO"
+          }
+        ]
+      },
+      "projection": {
+        "chip_id": "legacy-user-1-chip-4",
+        "current_state": "PAREADO",
+        "previous_state": "PAREADO",
+        "last_sequence": 2,
+        "inconsistency_count": 0,
+        "updated_at": "2026-07-18T23:50:45.000Z"
+      },
+      "audit_evidences": [
+        {
+          "evidence_id": "c923ae9e-42b7-4aaf-b66f-c341f9c6acb6",
+          "chip_id": "legacy-user-1-chip-4",
+          "evidence_type": "CONFORMITY_VERIFICATION",
+          "recorded_at": "2026-07-18T23:50:45.000Z",
+          "payload": {
+            "type": "legacy_migration",
+            "legacy_chip_id": 4,
+            "status": "migrated",
+            "persisted_events": 2,
+            "recorded_by": "ChipAuditService",
+            "details": {
+              "phase": "2.1",
+              "idempotency_checked": true,
+              "user_id": 1
+            }
+          }
+        },
+        {
+          "evidence_id": "529410ab-f50d-4868-ba06-cb92a5006fdd",
+          "chip_id": "legacy-user-1-chip-4",
+          "evidence_type": "REPLAY_VALIDATION",
+          "recorded_at": "2026-07-18T23:50:45.000Z",
+          "payload": {
+            "happened": true,
+            "occurred_in_order": 2,
+            "current_state": "PAREADO",
+            "previous_state": "PAREADO",
+            "last_sequence": 2,
+            "processed_events": 2,
+            "transitions_applied": 2,
+            "inconsistency_count": 0,
+            "inconsistencies": [],
+            "reproducible": true,
+            "uses_primary_evidence_only": true
+          }
+        }
+      ]
+    },
+    {
+      "legacy_chip_id": 8,
+      "official_chip_id": "legacy-user-1-chip-8",
+      "legacy_snapshot": {
+        "id": 8,
+        "userId": 1,
+        "chipName": "operacao-2",
+        "phoneNumber": "5567920019148",
+        "status": "desconectado",
+        "maturationProfile": "normal",
+        "sessionData": null,
+        "qrCode": null,
+        "isPaused": 0,
+        "lastActivity": null,
+        "createdAt": "2026-07-15T22:47:18.000Z",
+        "updatedAt": "2026-07-18T23:48:42.000Z"
+      },
+      "official_events": [
+        {
+          "event_id": "afabe4b4-bf34-4d61-ae03-3cf3448fbc0c",
+          "chip_id": "legacy-user-1-chip-8",
+          "event_type": "chip_created",
+          "event_version": 1,
+          "sequence": 1,
+          "occurred_at": "2026-07-15T22:47:18.000Z",
+          "recorded_at": "2026-07-18T23:50:45.000Z",
+          "payload": {
+            "created_by": "legacy_migration",
+            "sprint": 0
+          }
+        },
+        {
+          "event_id": "6f46de72-ba5e-41c0-acef-ab3be6548a4c",
+          "chip_id": "legacy-user-1-chip-8",
+          "event_type": "chip_paired",
+          "event_version": 1,
+          "sequence": 2,
+          "occurred_at": "2026-07-18T23:48:42.000Z",
+          "recorded_at": "2026-07-18T23:50:45.000Z",
+          "payload": {
+            "paired_with": "5567920019148",
+            "device_id": "operacao-2"
+          }
+        }
+      ],
+      "replay": {
+        "current_state": "PAREADO",
+        "previous_state": "PAREADO",
+        "last_sequence": 2,
+        "inconsistencies": [],
+        "processed_events": 2,
+        "transitions_applied": 2,
+        "transition_log": [
+          {
+            "sequence": 1,
+            "event_id": "afabe4b4-bf34-4d61-ae03-3cf3448fbc0c",
+            "event_type": "chip_created",
+            "from_state": null,
+            "to_state": "CRIADO"
+          },
+          {
+            "sequence": 2,
+            "event_id": "6f46de72-ba5e-41c0-acef-ab3be6548a4c",
+            "event_type": "chip_paired",
+            "from_state": "CRIADO",
+            "to_state": "PAREADO"
+          }
+        ]
+      },
+      "projection": {
+        "chip_id": "legacy-user-1-chip-8",
+        "current_state": "PAREADO",
+        "previous_state": "PAREADO",
+        "last_sequence": 2,
+        "inconsistency_count": 0,
+        "updated_at": "2026-07-18T23:50:45.000Z"
+      },
+      "audit_evidences": [
+        {
+          "evidence_id": "016ce3e5-fefc-4d83-b511-3c5a3feca9f2",
+          "chip_id": "legacy-user-1-chip-8",
+          "evidence_type": "CONFORMITY_VERIFICATION",
+          "recorded_at": "2026-07-18T23:50:45.000Z",
+          "payload": {
+            "type": "legacy_migration",
+            "legacy_chip_id": 8,
+            "status": "migrated",
+            "persisted_events": 2,
+            "recorded_by": "ChipAuditService",
+            "details": {
+              "phase": "2.1",
+              "idempotency_checked": true,
+              "user_id": 1
+            }
+          }
+        },
+        {
+          "evidence_id": "ad4f998a-82ba-4a19-ad58-549833f1f060",
+          "chip_id": "legacy-user-1-chip-8",
+          "evidence_type": "REPLAY_VALIDATION",
+          "recorded_at": "2026-07-18T23:50:45.000Z",
+          "payload": {
+            "happened": true,
+            "occurred_in_order": 2,
+            "current_state": "PAREADO",
+            "previous_state": "PAREADO",
+            "last_sequence": 2,
+            "processed_events": 2,
+            "transitions_applied": 2,
+            "inconsistency_count": 0,
+            "inconsistencies": [],
+            "reproducible": true,
+            "uses_primary_evidence_only": true
+          }
+        }
+      ]
+    }
+  ]
+}

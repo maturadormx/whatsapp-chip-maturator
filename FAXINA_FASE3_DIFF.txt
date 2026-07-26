@@ -1,0 +1,126 @@
+FAXINA FASE 3 — DIFF CONSOLIDADO
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-22
+
+1. Escopo
+
+Esta rodada executou a auditoria automática e uma limpeza conservadora baseada em evidências.
+
+Sequência aplicada:
+
+1. `npx knip`
+2. `npx depcheck`
+3. `npx ts-prune`
+4. limpeza apenas do que ficou comprovado
+5. validação com `npm test`, `npm run check` e `npm run build`
+
+2. Correções estruturais feitas antes da limpeza
+
+Durante a auditoria, foram identificados imports quebrados introduzidos pela reorganização da Fase 2.
+
+Arquivos corrigidos:
+
+- `scripts/maintenance/generate-synthetic-behavior-dataset.ts`
+- `scripts/maintenance/run-behavior-replay.ts`
+- `scripts/maintenance/validate-behavior-sandbox.ts`
+- `scripts/maintenance/validate-operational-calculation.ts`
+
+Objetivo:
+
+- eliminar ruído
+- evitar falso positivo de ferramenta
+- restaurar consistência da árvore de scripts
+
+3. Limpeza aplicada em `package.json`
+
+## Dependências removidas
+
+- `@aws-sdk/client-s3`
+- `@aws-sdk/s3-request-presigner`
+- `framer-motion`
+- `next-themes`
+- `qrcode-terminal`
+- `tailwindcss-animate`
+
+## DevDependencies removidas
+
+- `@tailwindcss/typography`
+- `@types/qrcode-terminal`
+- `add`
+- `tw-animate-css`
+
+## Dependência adicionada
+
+- `pino`
+
+Motivo:
+- usada no código do servidor
+- ausente como dependência explícita
+
+4. Itens preservados por prudência
+
+Não foram removidos nesta rodada:
+
+- `ComponentShowcase`
+- `AIChatBox`
+- `Map`
+- `ManusDialog`
+- `DashboardLayout`
+- `auth_info_*`
+- componentes visuais suspeitos
+- shells estruturais
+
+Leitura:
+- a auditoria automática sinalizou pontos suspeitos
+- mas não deu evidência suficiente para exclusão automática desses itens
+
+5. Validação
+
+## `npm test`
+
+Resultado:
+- **PASS**
+- `54` arquivos de teste aprovados
+- `162` testes aprovados
+- `2` skipped
+
+## `npm run check`
+
+Resultado:
+- **PASS**
+
+## `npm run build`
+
+Resultado:
+- falha apenas no incidente conhecido do ambiente Windows com `esbuild`
+- `Access is denied` ao limpar diretório temporário/cache
+
+Leitura correta:
+- não há regressão funcional nova causada pela Fase 3
+- o build ficou preso somente no problema ambiental já conhecido
+
+6. Resultado final
+
+A Fase 3 entregou:
+
+- auditoria automática executada
+- ruído estrutural corrigido
+- dependências comprovadamente mortas removidas
+- dependência faltante real adicionada
+- baseline operacional preservada
+
+7. Estado da faxina
+
+Com as Fases 1, 2 e 3 concluídas, o repositório entra em estado próximo de:
+
+**Clean Operational Baseline**
+
+Pendências restantes, se desejadas:
+
+- revisão manual leve
+- arquivos vazios
+- diretórios vazios
+- documentação repetida
+- README desatualizado
+
+Sem nova rodada agressiva de limpeza estrutural.

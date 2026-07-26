@@ -1,0 +1,30 @@
+{
+  "scope": "fleet",
+  "reconciled_chips": 8,
+  "divergences_found": 2,
+  "chips_without_official_stream": [],
+  "streams_without_projection": [],
+  "projections_inconsistent_with_replay": [],
+  "legacy_official_divergences": [
+    {
+      "code": "LEGACY_OFFICIAL_DIVERGENCE",
+      "message": "estado legado não é compatível com o estado oficial derivado atual",
+      "legacy_chip_id": 4,
+      "official_chip_id": "legacy-user-1-chip-4",
+      "legacy_status": "desconectado",
+      "projection_state": "PAREADO",
+      "replay_state": "PAREADO"
+    },
+    {
+      "code": "LEGACY_OFFICIAL_DIVERGENCE",
+      "message": "estado legado não é compatível com o estado oficial derivado atual",
+      "legacy_chip_id": 8,
+      "official_chip_id": "legacy-user-1-chip-8",
+      "legacy_status": "desconectado",
+      "projection_state": "PAREADO",
+      "replay_state": "PAREADO"
+    }
+  ],
+  "streams_checked": 0,
+  "projections_checked": 0
+}

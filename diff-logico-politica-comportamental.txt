@@ -1,0 +1,168 @@
+DIFF LÓGICO DAS MUDANÇAS
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-20
+
+OBJETIVO DA ALTERAÇÃO
+Centralizar a decisão comportamental em uma política única, para que planner, heartbeat e execução real usem a mesma base de decisão, reduzindo dispersão de regras e diminuindo agressividade operacional.
+
+RESUMO EXECUTIVO
+- Antes: havia regras macro separadas, com decisões distribuídas entre planner, engine de maturação, regras operacionais e policy de maturidade.
+- Depois: foi criada uma camada única de política comportamental com fase, orçamento diário, reciprocidade, cooldown, janela de sessão, jitter e restrições por risco.
+- Efeito: o sistema continua compatível com a API atual, mas decide de forma mais conservadora e consistente antes de agir.
+
+ARQUIVOS NOVOS
+
+1. server/services/behavior/types.ts
+- Criou os tipos centrais da nova política.
+- Passou a existir um vocabulário explícito para:
+  - fases comportamentais (`birth`, `reactive`, `interactive`, `active`, `mature`)
+  - ações permitidas
+  - restrições
+  - configuração por fase
+  - avaliação consolidada da política
+- Efeito: a arquitetura deixou de depender de strings soltas e ganhou contrato interno consistente.
+
+2. server/services/behavior/behaviorPolicyConfig.ts
+- Criou o loader central da configuração da política.
+- Define defaults internos e faz merge com `server/operational-rules.json`.
+- Efeito: a regra operacional ficou configurável sem espalhar valores mágicos pelo código.
+
+3. server/services/behavior/phaseGate.ts
+- Criou a resolução de fase por trust score e fallback por idade do chip.
+- Também valida se uma ação é permitida em determinada fase.
+- Efeito: a progressão de comportamento agora é explícita e reutilizável.
+
+4. server/services/behavior/dailyBudget.ts
+- Criou o cálculo de orçamento diário por fase e por custo de ação.
+- Efeito: o sistema passa a limitar intensidade diária por custo acumulado, não apenas por cooldown pontual.
+
+5. server/services/behavior/reciprocity.ts
+- Criou a avaliação de reciprocidade inbound/outbound.
+- Efeito: ações outbound ficam bloqueadas ou adiadas quando a relação está desequilibrada ou quando a fase exige inbound primeiro.
+
+6. server/services/behavior/sessionEngine.ts
+- Criou o motor de sessão comportamental.
+- Gera `sessionId`, orçamento de ações por sessão e identifica janela de sono.
+- Efeito: a execução ganhou contexto de sessão e não depende apenas de um loop cego.
+
+7. server/services/behavior/jitterEngine.ts
+- Criou o motor de jitter temporal.
+- Centraliza atraso de resposta e atraso entre ações.
+- Efeito: o timing fica mais natural e padronizado.
+
+8. server/services/behavior/behaviorPolicyEngine.ts
+- Criou o motor principal de decisão.
+- Consolida:
+  - fase
+  - risco
+  - cooldown
+  - orçamento diário
+  - reciprocidade
+  - janela de sessão/sono
+  - delay sugerido
+- Retorna uma decisão única com:
+  - `allowed`
+  - `decision`
+  - `action`
+  - `reason`
+  - `restrictions`
+  - `delayMs`
+  - `nextCheckAt`
+- Efeito: virou a fonte principal de verdade para decidir agir, esperar ou não fazer nada.
+
+ARQUIVOS ALTERADOS
+
+9. server/services/behaviorPlannerService.ts
+- Antes:
+  - o planner decidia principalmente por oportunidade, cooldown simples, risco e repetição.
+  - a lógica era local ao planner.
+- Depois:
+  - o planner continua com o comportamento antigo quando está em simulação pura e sem contexto operacional.
+  - quando recebe `policyContext`, passa a delegar a decisão ao `behaviorPolicyEngine`.
+  - mantém compatibilidade com sandbox/testes.
+- Efeito real:
+  - simulação continua explicável e estável.
+  - execução com contexto real passa a obedecer fase, orçamento, reciprocidade e restrições centralizadas.
+
+10. server/services/maturationEngine.ts
+- Antes:
+  - usava regras operacionais por target e policy macro de maturidade.
+  - escolhia delay principalmente pelo perfil (`suave`, `normal`, `ultra`).
+- Depois:
+  - consulta `getChipBehaviorScore`, `getChipCertification` e `getChipPolicyStats`.
+  - roda `evaluateMaturationExecutionPolicy(...)` antes do envio real.
+  - bloqueia ou adia envio quando a política nova reprova.
+  - usa o delay retornado pela política para outbound.
+  - reduz `messagesPerCycle` padrão de `5` para `2`.
+  - atraso entre mensagens passou a usar a configuração central.
+- Efeito real:
+  - a engine deixou de enviar apenas porque havia target elegível.
+  - agora ela só envia se o chip estiver dentro da fase e das restrições comportamentais.
+
+11. server/scheduled/maturationHeartbeat.ts
+- Antes:
+  - processava chips conectados e disparava ciclos de maturação com volume aleatório relativamente agressivo.
+  - heartbeat principal rodava a cada 5 minutos.
+- Depois:
+  - avalia `behaviorScore` e `policyStats` antes de iniciar ciclo.
+  - pode pular o ciclo inteiro se a política reprovar.
+  - reduz quantidade de mensagens por fase mais inicial.
+  - heartbeat principal passou para a cada 4 horas.
+- Efeito real:
+  - o cron principal ficou menos agressivo e mais compatível com uma estratégia de maturação gradual.
+
+12. server/db.ts
+- Mudança 1:
+  - adicionada `getChipPolicyStats(userId, chipId)`.
+  - ela consolida:
+    - inboundCount
+    - outboundCount
+    - ações do dia
+    - último inbound
+    - último outbound
+- Mudança 2:
+  - `ensureUserProfileImageColumn()` foi endurecida.
+  - agora consulta `INFORMATION_SCHEMA` antes de tentar `ALTER TABLE`.
+- Efeito real:
+  - a política nova ganhou uma fonte de telemetria operacional real.
+  - o bootstrap do banco ficou menos ruidoso e menos dependente de erro por coluna duplicada.
+
+13. server/operational-rules.json
+- Antes:
+  - continha essencialmente limites por perfil, tipo de target, cooldown, máximo por hora e máximo por dia.
+- Depois:
+  - ganhou `maturation.policy` com:
+    - thresholds de risco
+    - cooldown padrão
+    - jitter
+    - custo diário por ação
+    - bandas de trust score
+    - faixas de idade
+    - requisitos de inbound
+    - faixa de ações por sessão
+    - ações permitidas por fase
+- Efeito real:
+  - o arquivo deixou de ser apenas um limitador de volume e virou a configuração principal da estratégia comportamental.
+
+COMPATIBILIDADE E CONTRATO
+- Não houve quebra do contrato público principal.
+- O planner manteve fallback para o comportamento antigo quando não existe contexto operacional.
+- Isso foi necessário para preservar sandbox e testes determinísticos.
+
+VALIDAÇÃO FINAL
+- `pnpm build` -> OK
+- `pnpm test` -> OK
+- Resultado final: 18 arquivos de teste, 48 testes, todos passando
+
+IMPACTO FUNCIONAL
+- O sistema ficou mais conservador.
+- A tomada de decisão ficou centralizada.
+- A chance de agir fora de fase ou fora de contexto caiu.
+- O heartbeat principal ficou menos frequente.
+- O envio real passou a depender de trust, risco, reciprocidade e orçamento diário.
+
+PRÓXIMOS PASSOS RECOMENDADOS
+1. Criar testes unitários dedicados para `behaviorPolicyEngine.ts`.
+2. Adicionar telemetria explícita da fase e da razão de bloqueio em logs operacionais.
+3. Expor a fase comportamental no painel/admin para observação.
+4. Revisar se os thresholds iniciais (`55` e `80`) estão adequados ao comportamento real da base.

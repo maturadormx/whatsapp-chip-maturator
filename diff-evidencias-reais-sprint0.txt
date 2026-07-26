@@ -1,0 +1,214 @@
+EVIDÊNCIAS REAIS — SPRINT 0
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-21
+
+RESUMO
+
+Foi executada a coleta real pedida no workspace principal:
+
+1. `redis-cli ping`
+2. `npm install`
+3. `npm test`
+4. `npm run build`
+5. leitura de métricas antes do evento
+6. POST de evento de teste
+7. leitura de métricas depois do evento
+8. coleta separada de `npm run dev`
+
+ARQUIVOS GERADOS
+
+- `sprint0-evidencias-completo.log`
+- `sprint0-app.log`
+
+VEREDITO ATUAL
+
+🔴 NO-GO
+
+Motivos:
+
+1. `redis-cli` indisponível no ambiente
+2. `npm run dev` falha no bootstrap por `ECONNREFUSED` no MySQL (`127.0.0.1:3307`)
+3. `npm run dev` também falha ao escrever em `node_modules/.vite` com `Access is denied`
+4. `npm test` falha em massa no workspace principal
+5. `npm run build` falha no workspace principal
+6. sem app saudável, não há métricas reais nem fluxo E2E auditável
+
+DETALHE POR ITEM
+
+## 1. Redis
+
+Comando:
+- `redis-cli ping`
+
+Resultado:
+- ❌ falhou
+
+Saída:
+- `redis-cli` não é reconhecido no ambiente atual
+
+Conclusão:
+- não há evidência de `PONG`
+
+## 2. npm install
+
+Comando:
+- `npm install`
+
+Resultado:
+- ✅ concluído
+
+Trecho final:
+- `added 12 packages, changed 3 packages`
+- `8 vulnerabilities`
+
+Conclusão:
+- instalação terminou sem erro fatal
+
+## 3. npm run dev
+
+Arquivo:
+- `sprint0-app.log`
+
+Resultado:
+- ❌ não sobe limpo
+
+O que inicializa:
+- OAuth
+- Prometheus
+- endpoints heartbeat
+
+Falhas reais encontradas:
+
+### 3.1 MySQL indisponível
+- `DrizzleQueryError`
+- `connect ECONNREFUSED 127.0.0.1:3307`
+
+Ponto:
+- `restoreChipSessionsOnStartup`
+
+### 3.2 Escrita do Vite bloqueada
+- múltiplos erros `Access is denied`
+- destino: `node_modules/.vite/deps_temp_*`
+
+Conclusão:
+- a aplicação não fica operacional
+
+## 4. npm test
+
+Arquivo:
+- `sprint0-evidencias-completo.log`
+
+Resultado:
+- ❌ falhou
+
+Sinal dominante:
+- `56` suites falhando
+- erro recorrente:
+  - `ReferenceError: __vite_ssr_exportName__ is not defined`
+
+Conclusão:
+- o workspace principal está instável para execução direta neste momento
+
+## 5. npm run build
+
+Arquivo:
+- `sprint0-evidencias-completo.log`
+
+Resultado:
+- ❌ falhou
+
+Evidência:
+- seção `--- NPM BUILD ---`
+- presença de `error during build`
+
+Conclusão:
+- o build do workspace principal não ficou verde nesta coleta
+
+## 6. Métricas antes/depois
+
+Arquivo:
+- `sprint0-evidencias-completo.log`
+
+Resultado:
+- ❌ não auditável
+
+Motivo:
+- sem aplicação saudável, não houve exposição estável do endpoint `/internal/metrics`
+- também não houve fluxo de evento processado de ponta a ponta
+
+## 7. Evento de teste
+
+Arquivo:
+- `sprint0-evidencias-completo.log`
+
+Resultado:
+- ❌ não validado
+
+Motivo:
+- sem app operacional, o POST não serve como evidência útil de aceite
+
+CHECKLIST DE ACEITE
+
+1. Redis PONG
+- ❌
+
+2. npm install sem erros
+- ✅
+
+3. app inicia sem erros fatais
+- ❌
+
+4. npm test verde
+- ❌
+
+5. npm run build verde
+- ❌
+
+6. /internal/metrics responde
+- ❌
+
+7. 20 métricas visíveis
+- ❌
+
+8. evento aceito
+- ❌
+
+9. métricas aumentam
+- ❌
+
+10. auditoria GO
+- ❌
+
+INTERPRETAÇÃO TÉCNICA
+
+Há uma diferença importante entre:
+
+1. o clone funcional com `npm`, onde várias validações anteriores ficaram verdes
+2. o workspace principal atual, onde a execução real desta rodada mostrou bloqueios de ambiente e runtime
+
+Os bloqueios observados agora são:
+
+- ausência de `redis-cli`
+- ausência ou indisponibilidade do MySQL em `127.0.0.1:3307`
+- permissão negada para escrita do Vite em `node_modules/.vite`
+- falhas amplas de `vitest` no workspace principal com `__vite_ssr_exportName__ is not defined`
+
+PRÓXIMO PASSO CORRETO
+
+Antes de insistir na auditoria Sprint 0, é necessário estabilizar o ambiente real:
+
+1. disponibilizar Redis
+2. disponibilizar MySQL ou corrigir `DATABASE_URL`
+3. limpar/destravar `node_modules/.vite`
+4. rerodar `npm test` no workspace principal até verde
+5. rerodar `npm run build` no workspace principal até verde
+6. só então repetir a coleta de métricas e o POST do evento
+
+VEREDITO FINAL
+
+O sistema NÃO está pronto para GO operacional no workspace principal nesta coleta.
+
+O estado correto neste momento é:
+
+- Sprint 0: 🔴 NO-GO
+- ação necessária: estabilização do ambiente real antes de nova auditoria

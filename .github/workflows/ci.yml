@@ -1,0 +1,74 @@
+name: ci
+
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root_pass_ci
+          MYSQL_DATABASE: whatsapp_chip_maturator
+          MYSQL_USER: chip_user
+          MYSQL_PASSWORD: chip_pass
+        ports:
+          - 3307:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot_pass_ci"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=20
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=20
+    env:
+      DATABASE_URL: mysql://chip_user:chip_pass@127.0.0.1:3307/whatsapp_chip_maturator
+      REDIS_URL: redis://127.0.0.1:6379
+      JWT_SECRET: ci-secret
+      COOKIE_SECRET: ci-cookie
+      SESSION_SECRET: ci-session
+      OAUTH_SERVER_URL: http://oauth-placeholder.local
+      VITE_OAUTH_PORTAL_URL: http://portal-placeholder.local
+      VITE_APP_ID: ci-app
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate prettier formatting
+        run: npx prettier --check .
+
+      - name: Typecheck
+        run: npm run check
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build application
+        run: npm run build
+
+      - name: Build docker image
+        run: docker build -t whatsapp-chip-maturator-ci .
+
+      - name: Validate auditor syntax
+        run: python -m py_compile auditoria.py

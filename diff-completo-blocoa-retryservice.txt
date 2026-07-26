@@ -1,0 +1,301 @@
+DIFF COMPLETO DO BLOCO A — RETRYSERVICE
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-20
+
+OBJETIVO DA RODADA
+Executar as 3 entregas combinadas:
+1. gerar a matriz de rastreabilidade do Marco 2
+2. implementar o Bloco A (`RetryService`)
+3. atualizar a matriz com o que ficou efetivamente entregue e validado
+
+RESULTADO FINAL
+- A matriz do Marco 2 foi criada.
+- O `RetryService` foi implementado.
+- O ledger de execução foi expandido para suportar retry de forma persistida.
+- O `ExecutionService` agora suporta reexecução de um ledger existente.
+- O projeto foi validado com testes e build.
+
+VALIDAÇÃO FINAL
+- `pnpm test` -> `66/66` testes passando
+- `22` arquivos de teste
+- `pnpm build` -> `OK`
+
+ENTREGA 1 — MATRIZ DE RASTREABILIDADE
+
+Arquivo criado:
+- `matriz-rastreabilidade-marco2.txt`
+
+O que entrou:
+- definição de invariantes locais `INV-M2-*` para esta fase
+- tabela de rastreabilidade por entrega
+- vinculação entre:
+  - entrega
+  - ADR
+  - invariantes
+  - evidência em código
+  - evidência em testes
+  - status anterior
+  - status atual
+- resumo do estado do Marco 2 após o Bloco A
+
+Decisão importante:
+- como o repositório ainda não possui IDs consolidados de invariantes do Marco 2, a matriz usa IDs locais desta fase e deixa isso explícito
+
+Efeito prático:
+- a evolução desta etapa deixou de depender só de memória e conversa
+- agora existe um contrato rastreável dentro do projeto
+
+ENTREGA 2 — RETRYSERVICE
+
+ARQUIVOS ALTERADOS
+
+1. `drizzle/schema.ts`
+O que mudou:
+- a tabela `behavior_action_execution` foi ampliada
+
+Mudanças principais:
+- `status` passou a suportar:
+  - `PENDING`
+  - `SENDING`
+  - `ACKED`
+  - `FAILED`
+  - `RETRYING`
+- novos campos:
+  - `recoverable`
+  - `maxAttempts`
+  - `nextRetryAt`
+  - `lastRetryAt`
+
+Efeito prático:
+- o ledger agora comporta retry de forma explícita e persistida
+
+2. `drizzle/0006_behavior_action_execution.sql`
+O que mudou:
+- foi atualizado para refletir o formato atual do ledger com os campos de retry
+
+Efeito prático:
+- a definição base da tabela já nasce alinhada ao estado novo
+
+3. `drizzle/0007_behavior_action_retry_policy.sql`
+O que foi criado:
+- migration incremental para ambientes que já têm a tabela anterior
+
+O que ela faz:
+- ajusta enum de `status`
+- adiciona:
+  - `recoverable`
+  - `maxAttempts`
+  - `nextRetryAt`
+  - `lastRetryAt`
+
+Efeito prático:
+- evita depender de reset de base para evoluir o ledger
+
+4. `server/db.ts`
+O que mudou:
+- `ensureBehaviorActionExecutionTable()` foi endurecida
+- adiciona/ajusta os campos novos do ledger
+- helpers foram expandidos
+
+Novos comportamentos e funções:
+- `createBehaviorActionExecution(...)`
+  - agora recebe:
+    - `recoverable`
+    - `maxAttempts`
+    - `nextRetryAt`
+    - `lastRetryAt`
+- `updateBehaviorActionExecution(...)`
+  - agora aceita atualizar:
+    - `recoverable`
+    - `maxAttempts`
+    - `nextRetryAt`
+    - `lastRetryAt`
+    - `status = SENDING`
+- nova função:
+  - `getBehaviorActionExecutionById(...)`
+- nova função:
+  - `listRecoverableBehaviorActionExecutions(now, limit)`
+
+Efeito prático:
+- o backend passou a conseguir localizar, filtrar e atualizar execuções elegíveis a retry
+
+5. `server/services/behavior/dispatcher.ts`
+O que mudou:
+- `ActionExecutedEvent` foi alinhado ao novo estado `SENDING`
+
+Efeito prático:
+- o contrato do evento de execução agora corresponde à máquina de estados real
+
+6. `server/services/behavior/logger.ts`
+O que mudou:
+- foi mantido o log de `ActionExecuted`
+- segue recebendo eventos do dispatcher
+
+Efeito prático:
+- o fluxo de retry também gera observabilidade operacional no console
+
+7. `server/services/behavior/executionService.ts`
+O que mudou:
+- esta foi a principal refatoração da rodada
+
+Novidades:
+- `BehaviorRetryPolicy`
+- `DEFAULT_RETRY_POLICY`
+- `computeRetryDelayMs(...)`
+- `parseExecutionPayload(...)`
+- `notifyExecutionTransition(...)`
+- `runExecutionAttempt(...)`
+- `retryBehaviorActionExecution(...)`
+
+Mudanças estruturais:
+- o serviço não é mais apenas “criar registro e enviar”
+- agora ele sabe:
+  - criar ledger inicial
+  - executar tentativa inicial
+  - marcar `SENDING`
+  - confirmar `ACKED`
+  - falhar em `FAILED`
+  - decidir se a falha é recuperável
+  - agendar `nextRetryAt`
+  - reaproveitar uma execução persistida
+
+Nova lógica de falha:
+- em erro, a execução passa a:
+  - `status = FAILED`
+  - `budgetState = RELEASED`
+  - `recoverable = 1 ou 0`
+  - `nextRetryAt = calculado`
+  - `maxAttempts = persistido`
+
+Nova lógica de retry:
+- `retryBehaviorActionExecution(...)`
+  - carrega a execução existente por `executionId`
+  - garante que ela está em `FAILED` e é recuperável
+  - move para `RETRYING`
+  - incrementa `attempt`
+  - volta ao ciclo `SENDING -> ACKED/FAILED`
+
+Efeito prático:
+- o projeto agora tem retry real sobre uma execução persistida, não apenas reenvio improvisado
+
+8. `server/services/behavior/retryService.ts`
+O que foi criado:
+- `runBehaviorRetryCycle(...)`
+
+Responsabilidade:
+- escanear execuções elegíveis
+- chamar `retryBehaviorActionExecution(...)`
+- resumir o ciclo:
+  - `scanned`
+  - `retried`
+  - `skipped`
+  - `failed`
+  - `executionIds`
+
+Efeito prático:
+- o RetryService existe como serviço independente, exatamente como pedido
+
+9. `server/services/behavior/executionService.test.ts`
+O que mudou:
+- a suíte foi ajustada ao novo ciclo real
+
+Novas expectativas:
+- sucesso:
+  - `PENDING -> RESERVED -> SENDING -> ACKED`
+- falha:
+  - `PENDING -> RESERVED -> SENDING -> FAILED`
+- o dispatcher agora é chamado em duas transições:
+  - `SENDING`
+  - estado final
+
+Efeito prático:
+- os testes passaram a documentar a máquina real do serviço
+
+10. `server/services/behavior/retryService.test.ts`
+O que foi criado:
+- testes do `RetryService`
+
+Casos cobertos:
+- reexecução de execuções elegíveis
+- contabilização de `retried`, `skipped`, `failed`
+- continuidade do ciclo mesmo quando uma reexecução falha
+
+Efeito prático:
+- o novo serviço já nasceu com comportamento verificável
+
+ENTREGA 3 — MATRIZ ATUALIZADA
+
+Arquivo atualizado/criado:
+- `matriz-rastreabilidade-marco2.txt`
+
+O que foi refletido nela:
+- `RetryService` saiu de “não iniciado” para “implementado”
+- política de retry saiu de “não iniciada” para “implementada”
+- incremento de `attempt` saiu de “não iniciado” para “implementado”
+- `Budget Reservation` continuou explicitamente como próximo incremento
+- o documento registra também as evidências reais em código e testes
+
+O QUE FOI PRESERVADO DE PROPÓSITO
+- não foi implementado ainda `Budget Reservation` transacional
+- não foi implementado teste ponta a ponta completo
+- não foi implementado `Gateway` desacoplado formal
+- não foi implementado `Inbound Handler`
+- não foi implementado `Event Store`
+
+Motivo:
+- a rodada manteve disciplina de escopo
+- fechou o Bloco A sem contaminar a mudança com outras epics do Marco 2
+
+MÁQUINA DE ESTADOS EFETIVA APÓS ESTA RODADA
+
+Execução inicial:
+PENDING
+  ↓
+RESERVED
+  ↓
+SENDING
+  ↓
+ACKED
+
+Falha recuperável:
+PENDING
+  ↓
+RESERVED
+  ↓
+SENDING
+  ↓
+FAILED
+  ↓
+RETRYING
+  ↓
+SENDING
+  ↓
+ACKED ou FAILED
+
+GANHO ARQUITETURAL
+Antes:
+- existia ledger
+- existia execução inicial
+- não havia um ciclo explícito de retry sobre ledger persistido
+
+Depois:
+- existe ledger com política de retry persistida
+- existe `RetryService`
+- existe reexecução real por `executionId`
+- existe incremento explícito de `attempt`
+- existe suporte a `nextRetryAt`
+
+LISTA CONSOLIDADA DOS ARQUIVOS IMPACTADOS
+- `drizzle/schema.ts`
+- `drizzle/0006_behavior_action_execution.sql`
+- `drizzle/0007_behavior_action_retry_policy.sql`
+- `server/db.ts`
+- `server/services/behavior/dispatcher.ts`
+- `server/services/behavior/executionService.ts`
+- `server/services/behavior/executionService.test.ts`
+- `server/services/behavior/retryService.ts`
+- `server/services/behavior/retryService.test.ts`
+- `matriz-rastreabilidade-marco2.txt`
+
+VEREDITO
+Esta rodada conclui o Bloco A do Marco 2 de forma consistente com a OCS 2.0. O projeto passa a ter não apenas execução persistida, mas também retry operacional explícito, rastreável e testado. O próximo passo correto continua sendo o Bloco B: `Budget Reservation` transacional.

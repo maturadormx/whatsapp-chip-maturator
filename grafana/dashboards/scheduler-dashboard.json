@@ -1,0 +1,41 @@
+{
+  "id": null,
+  "uid": "scheduler-dashboard",
+  "title": "Scheduler",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 2,
+  "refresh": "10s",
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Execuções e publicações",
+      "gridPos": { "x": 0, "y": 0, "w": 14, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        { "expr": "rate(scheduler_runs_total[1m]) * 60", "legendFormat": "runs/min", "refId": "A" },
+        { "expr": "rate(scheduler_jobs_published_total[1m]) * 60", "legendFormat": "published/min", "refId": "B" }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Falhas por minuto",
+      "gridPos": { "x": 14, "y": 0, "w": 10, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        { "expr": "rate(scheduler_publish_failures_total[1m]) * 60", "refId": "A" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Totais do scheduler",
+      "gridPos": { "x": 0, "y": 8, "w": 24, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        { "expr": "scheduler_runs_total", "legendFormat": "runs total", "refId": "A" },
+        { "expr": "scheduler_jobs_published_total", "legendFormat": "published total", "refId": "B" },
+        { "expr": "scheduler_publish_failures_total", "legendFormat": "failures total", "refId": "C" }
+      ]
+    }
+  ]
+}

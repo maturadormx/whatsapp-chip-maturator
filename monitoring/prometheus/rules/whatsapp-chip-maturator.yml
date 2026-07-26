@@ -1,0 +1,47 @@
+groups:
+  - name: whatsapp-chip-maturator
+    rules:
+      - alert: WorkerStopped
+        expr: up{job="app"} == 0 or max_over_time(worker_running[1m]) == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: Worker parado
+          description: O worker da fila está parado ou a aplicação ficou indisponível.
+
+      - alert: QueueGrowing
+        expr: (queue_pending_observations + queue_delayed_jobs + queue_failed_jobs) > 2
+        for: 30s
+        labels:
+          severity: warning
+        annotations:
+          summary: Queue crescendo
+          description: A fila acumulou backlog em pending, delayed ou failed por pelo menos 30 segundos.
+
+      - alert: DlqHasJobs
+        expr: dlq_current_size > 0
+        for: 15s
+        labels:
+          severity: critical
+        annotations:
+          summary: DLQ com jobs
+          description: A DLQ possui jobs acumulados.
+
+      - alert: PipelineFailureRateHigh
+        expr: increase(pipeline_failed_total[2m]) / clamp_min(increase(pipeline_started_total[2m]), 1) > 0.05
+        for: 30s
+        labels:
+          severity: warning
+        annotations:
+          summary: Taxa de falha da pipeline alta
+          description: A taxa de falha da pipeline superou 5% nos últimos 2 minutos.
+
+      - alert: SchedulerStopped
+        expr: up{job="app"} == 0 or increase(scheduler_runs_total[2m]) == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: Scheduler parado
+          description: O scheduler não executou nenhuma vez nos últimos 2 minutos ou a aplicação ficou indisponível.

@@ -1,0 +1,176 @@
+D2 — FILA + ESTABILIZAÇÃO DO AMBIENTE
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-21
+
+RESUMO
+Nesta rodada entraram os artefatos centrais do D2 (fila, worker, métricas, scheduler publicador e integração no runtime), mas a validação completa foi interrompida por instabilidade do ambiente local de dependências após a entrada de `bullmq` + `ioredis`.
+
+O travamento NÃO foi no domínio nem no pipeline. O bloqueio aconteceu na camada de dependências / `node_modules`.
+
+O QUE FOI IMPLEMENTADO NO CÓDIGO
+
+1. Contrato de fila
+- `server/ports/MessageQueuePort.ts`
+
+2. Scheduler publicador para fila
+- `server/infrastructure/queue/QueuePublishingScheduler.ts`
+- `server/infrastructure/queue/QueuePublishingScheduler.test.ts`
+
+3. Worker dedicado do runtime de Observation
+- `server/infrastructure/queue/ObservationWorker.ts`
+- `server/infrastructure/queue/ObservationWorker.test.ts`
+
+4. Adapter BullMQ
+- `server/infrastructure/queue/BullMQAdapter.ts`
+- `server/infrastructure/queue/BullMQAdapter.test.ts`
+
+5. Métricas da fila
+- `server/metrics/QueueMetricsCollector.ts`
+- `server/metrics/QueueMetricsCollector.test.ts`
+
+6. Runtime adaptado para fila opcional
+- `server/runtime/observationRuntime.ts`
+- `server/_core/env.ts`
+- `server/_core/index.ts`
+- `.env.example`
+
+7. Claim endurecido
+- `server/repositories/observation/MemoryObservationRepository.ts`
+- `server/infrastructure/persistence/mysql/MysqlObservationRepository.ts`
+- `drizzle/schema.ts`
+
+PRINCIPAIS DECISÕES DE IMPLEMENTAÇÃO
+
+1. Fila opcional por ambiente
+- `OBSERVATION_QUEUE_ENABLED`
+- `REDIS_URL`
+- `OBSERVATION_QUEUE_NAME`
+- `OBSERVATION_QUEUE_ATTEMPTS`
+- `OBSERVATION_QUEUE_BACKOFF_MS`
+
+2. Worker separado do scheduler
+- o scheduler publica `PROCESS_PENDING_BATCH`
+- o worker reclama lote com `claimPending()`
+- o pipeline continua sendo a fronteira de processamento
+
+3. Retry no broker
+- o retry deixou de ficar só no decorator local
+- o adapter da fila passou a suportar `attempts` e `backoff`
+
+4. DLQ enriquecida
+- erro
+- stack
+- hostname
+- worker
+- timestamp
+
+5. Claim mais robusto
+- lease em memória
+- `leaseExpiresAt` no schema SQL
+- `FOR UPDATE SKIP LOCKED` no adapter MySQL
+
+O QUE FOI VALIDADO COM SUCESSO
+
+1. `dist` foi removido
+2. `node_modules` antigo foi desmontado com sucesso em partes
+3. `pnpm install` preservando `pnpm-lock.yaml` concluiu com sucesso
+
+SAÍDA IMPORTANTE:
+- `pnpm install` => OK
+
+ONDE PAROU
+
+O primeiro passo que falhou na sequência segura foi:
+
+- `pnpm exec tsc --noEmit`
+
+ERROS ENCONTRADOS
+
+1. `tsconfig.json` escreve `tsBuildInfoFile` dentro de `node_modules`
+   - caminho atual:
+     - `./node_modules/typescript/tsbuildinfo`
+   - isso é frágil e estourou após a reinstalação
+
+2. A reinstalação deixou links quebrados / incompletos para pacotes-base
+   - `@types/node`
+   - `vite/client`
+   - `esbuild`
+
+SINTOMAS OBSERVADOS
+
+`pnpm exec tsc --noEmit`
+- `Cannot find type definition file for 'node'`
+- `Cannot find type definition file for 'vite/client'`
+- `Could not write file ... node_modules/typescript/tsbuildinfo`
+
+`pnpm test`
+- falhou no startup do `vitest` por falta de `vite/index.js`
+
+`pnpm build`
+- falhou porque `vite` não conseguiu resolver `esbuild`
+
+TENTATIVAS FEITAS
+
+1. reinstalação simples preservando lockfile
+- resultado: `pnpm install` OK
+- ambiente ainda ficou inconsistente para `tsc/vitest/vite`
+
+2. reinstalação em modo `hoisted`
+- comando iniciado:
+  - `pnpm install --node-linker=hoisted`
+- comportamento:
+  - travou reorganizando o grafo
+- comando interrompido para não congelar a sessão
+
+CONCLUSÃO TÉCNICA
+
+O problema atual é de árvore de dependências / materialização do `node_modules`, não de modelagem do D2.
+
+O código do D2 foi adicionado, mas eu não vou marcar esta rodada como “verde” enquanto esta sequência não ficar estável:
+
+1. `pnpm install`
+2. `pnpm exec tsc --noEmit`
+3. `pnpm test`
+4. `pnpm build`
+
+PRÓXIMO PASSO SEGURO
+
+Antes de continuar o D2, eu recomendo fazer exatamente nesta ordem:
+
+1. ajustar `tsconfig.json` para tirar `tsBuildInfoFile` de dentro de `node_modules`
+2. refazer a materialização do `node_modules` até `@types/node`, `vite` e `esbuild` ficarem consistentes
+3. só depois voltar para:
+   - `pnpm exec tsc --noEmit`
+   - `pnpm test`
+   - `pnpm build`
+
+ARQUIVOS DO D2 JÁ CRIADOS NESTA RODADA
+
+- `server/ports/MessageQueuePort.ts`
+- `server/infrastructure/queue/QueuePublishingScheduler.ts`
+- `server/infrastructure/queue/QueuePublishingScheduler.test.ts`
+- `server/infrastructure/queue/ObservationWorker.ts`
+- `server/infrastructure/queue/ObservationWorker.test.ts`
+- `server/infrastructure/queue/BullMQAdapter.ts`
+- `server/infrastructure/queue/BullMQAdapter.test.ts`
+- `server/metrics/QueueMetricsCollector.ts`
+- `server/metrics/QueueMetricsCollector.test.ts`
+
+ARQUIVOS ALTERADOS NESTA RODADA
+
+- `server/_core/env.ts`
+- `server/_core/index.ts`
+- `server/runtime/observationRuntime.ts`
+- `server/repositories/observation/MemoryObservationRepository.ts`
+- `server/infrastructure/persistence/mysql/MysqlObservationRepository.ts`
+- `drizzle/schema.ts`
+- `.env.example`
+
+VEREDITO
+
+O D2 foi parcialmente materializado no código, mas a rodada travou na estabilização do ambiente local de dependências. O gargalo real agora é:
+
+- corrigir `tsconfig.json` (`tsBuildInfoFile`)
+- estabilizar `node_modules`
+
+Só depois disso vale continuar com fila/DLQ/worker até fechamento completo da sprint.

@@ -1,0 +1,138 @@
+DIFF COMPLETO DA VALIDAÇÃO INTEGRADA DA FASE 1
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-20
+
+OBJETIVO DA RODADA
+Encerrar a Fase 1 com uma validação integrada do núcleo operacional já implementado, sem tratar essa validação como E2E completo de provedor externo.
+
+ENQUADRAMENTO ADOTADO
+- Não foi criado novo bloco funcional do domínio.
+- Esta rodada foi tratada como validação de fase.
+- O teste implementado cobre o núcleo interno:
+  `Policy -> Execution -> Retry -> Budget -> Ledger`
+- Gateway real, inbound real e ACK externo continuam fora do escopo desta fase.
+
+RESULTADO FINAL
+- A Fase 1 foi validada do ponto de vista operacional interno.
+- A matriz do Marco 2 foi atualizada para refletir esse fechamento.
+- Foi gerado um artefato específico de validação da fase.
+
+VALIDAÇÃO FINAL
+- `pnpm test` -> `70/70` testes passando
+- `24` arquivos de teste
+- `pnpm build` -> `OK`
+
+ARQUIVOS NOVOS
+
+1. `server/services/behavior/phase1OperationalIntegration.test.ts`
+O que foi criado:
+- teste integrado operacional da Fase 1
+
+Fluxo validado:
+- decisão aprovada
+- criação de execução
+- reserva de budget
+- falha inicial
+- release do budget
+- retry elegível
+- nova reserva
+- ACK final
+- estado final do ledger consistente
+
+Comportamentos verificados:
+- `executionId` permanece estável
+- `attempt` sobe de `1` para `2`
+- `budgetState` faz o ciclo correto
+- a primeira reserva termina em `RELEASED`
+- a segunda reserva termina em `COMMITTED`
+- os eventos emitidos aparecem em ordem operacional:
+  - `SENDING`
+  - `FAILED`
+  - `RETRYING`
+  - `SENDING`
+  - `ACKED`
+
+Efeito prático:
+- o núcleo da Fase 1 agora tem uma validação integrada automatizada
+
+2. `fase1-validacao-operacional.txt`
+O que foi criado:
+- documento curto de fechamento da Fase 1
+
+O que ele registra:
+- objetivo da validação
+- escopo coberto
+- cenário validado
+- critérios satisfeitos
+- arquivo do teste
+- resultado final
+- conclusão arquitetural
+
+Efeito prático:
+- o fechamento da fase deixou de estar implícito na conversa ou só nos testes
+
+ARQUIVOS ALTERADOS
+
+3. `matriz-rastreabilidade-marco2.txt`
+O que mudou:
+- a finalidade do documento foi atualizada para incluir a validação integrada da Fase 1
+- a entrada antiga de “testes de integração ponta a ponta” foi reenquadrada para:
+  - `Validação integrada da Fase 1`
+- a evidência em código agora aponta para:
+  - `server/services/behavior/phase1OperationalIntegration.test.ts`
+- o resumo de status passou a indicar:
+  - validação integrada da Fase 1 -> concluída
+  - Fase 1 pronta para tag -> sim
+- a validação desta rodada foi atualizada para:
+  - `70/70` testes
+  - `build` ok
+- o veredito final foi ajustado:
+  - Fase 1 validada
+  - próximo passo correto: abertura da Fase 2 com `Gateway Interface`
+
+Efeito prático:
+- a matriz continuou funcionando como documento vivo de governança
+
+O QUE ESTA RODADA NÃO FEZ
+- não implementou `Gateway Interface`
+- não implementou `Inbound Handler`
+- não implementou ACK real
+- não implementou Event Store
+- não criou E2E completo externo
+
+Motivo:
+- isso preserva exatamente o enquadramento correto da fase:
+  validação do núcleo interno já implementado
+
+GANHO DE PROCESSO
+Antes:
+- a Fase 1 estava implementada, mas ainda sem fechamento formal
+
+Depois:
+- existe um teste integrado da fase
+- existe um documento de validação
+- existe atualização explícita da matriz
+- a fase fica pronta para encerramento formal sem expandir arquitetura prematuramente
+
+GANHO ARQUITETURAL
+Esta rodada confirma, com evidência automatizada, que os agregados principais da Fase 1 já cooperam corretamente:
+
+BehaviorPolicyEngine
+  ↓
+ExecutionService
+  ↓
+Execution Ledger
+  ↓
+RetryService
+  ↓
+BudgetReservationService
+
+Isso não fecha ainda o ciclo externo do sistema, mas fecha corretamente o núcleo operacional interno previsto para a fase.
+
+LISTA CONSOLIDADA DOS ARQUIVOS IMPACTADOS
+- `server/services/behavior/phase1OperationalIntegration.test.ts`
+- `matriz-rastreabilidade-marco2.txt`
+- `fase1-validacao-operacional.txt`
+
+VEREDITO
+Esta rodada não expande o domínio. Ela faz algo mais importante para o momento atual: encerra a Fase 1 com validação integrada, rastreabilidade atualizada e critério formal de passagem para a Fase 2.

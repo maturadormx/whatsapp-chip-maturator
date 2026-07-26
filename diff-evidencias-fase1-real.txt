@@ -1,0 +1,127 @@
+EVIDÊNCIAS REAIS — FASE 1
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-21
+
+RESUMO
+
+Foram executadas as três coletas pedidas para a Fase 1:
+
+1. `redis-cli ping`
+2. `npm install`
+3. `npm run dev`
+
+RESULTADO GERAL
+
+Status atual da Fase 1:
+- Redis: ❌ bloqueado no ambiente atual
+- npm install: ✅ OK
+- npm run dev: ❌ aplicação não sobe limpa
+
+VEREDITO DA ETAPA
+
+🔴 NÃO LIBERADA para seguir para:
+- `npm test`
+- `npm run build`
+- `curl /internal/metrics`
+
+Motivo:
+- o ambiente atual não tem `redis-cli`
+- a aplicação quebra no bootstrap por `ECONNREFUSED` no MySQL (`127.0.0.1:3307`)
+
+EVIDÊNCIA 1 — REDIS
+
+Comando:
+- `redis-cli ping`
+
+Saída:
+
+```text
+redis-cli : O termo 'redis-cli' não é reconhecido como nome de cmdlet, função, arquivo de script ou programa operável.
+```
+
+Interpretação:
+- não foi possível nem executar a verificação de Redis
+- isso indica ausência do cliente Redis no ambiente atual
+
+EVIDÊNCIA 2 — NPM INSTALL
+
+Comando:
+- `npm install`
+
+Trecho final:
+
+```text
+added 12 packages, changed 3 packages, and audited 986 packages in 11s
+216 packages are looking for funding
+8 vulnerabilities (5 moderate, 2 high, 1 critical)
+```
+
+Interpretação:
+- instalação concluída com sucesso
+- há warnings e vulnerabilidades, mas não houve falha do comando
+
+EVIDÊNCIA 3 — NPM RUN DEV
+
+Comando:
+- `npm run dev`
+
+Primeiras linhas relevantes:
+
+```text
+[OAuth] Initialized with baseURL: http://localhost:3000
+[Metrics] Registro Prometheus inicializado
+[Heartbeat] Maturation endpoint registered at /api/scheduled/maturation
+[Heartbeat] Marketing endpoint registered at /api/scheduled/marketing
+[Heartbeat] Shadow endpoint registered at /api/scheduled/behavior-memory-shadow
+[Heartbeat] Chip projection endpoint registered at /api/scheduled/chip-projection
+```
+
+Falha encontrada:
+
+```text
+DrizzleQueryError
+Error: connect ECONNREFUSED 127.0.0.1:3307
+```
+
+Ponto da falha:
+- `restoreChipSessionsOnStartup`
+- bootstrap em `server/_core/index.ts`
+
+Interpretação:
+- a aplicação inicia parcialmente
+- Prometheus sobe
+- heartbeats são registrados
+- mas o bootstrap falha por indisponibilidade do MySQL esperado em `127.0.0.1:3307`
+
+CHECKLIST DA FASE 1
+
+1. Redis PONG
+- ❌ não validado
+
+2. npm install sem erros
+- ✅ validado
+
+3. app inicia sem erros fatais
+- ❌ não validado
+
+PRÓXIMO PASSO CORRETO
+
+Antes de avançar para a próxima etapa, é necessário corrigir o ambiente:
+
+1. Redis
+- instalar `redis-cli` ou subir a stack que forneça Redis
+
+2. MySQL
+- subir o banco esperado em `127.0.0.1:3307`
+- ou corrigir a configuração de `DATABASE_URL`
+
+Depois disso, repetir:
+
+1. `redis-cli ping`
+2. `npm run dev`
+
+Só com isso verde faz sentido seguir para:
+
+- `npm test`
+- `npm run build`
+- `curl /internal/metrics`

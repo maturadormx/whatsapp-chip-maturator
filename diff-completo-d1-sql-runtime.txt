@@ -1,0 +1,252 @@
+DIFF COMPLETO — D1 SQL RUNTIME
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-20
+
+OBJETIVO DA RODADA
+Entregar o D1 de persistência real do runtime de `Observation` usando o stack já existente do projeto, sem introduzir infraestrutura paralela:
+
+1. adapters SQL reais para `ObservationRepository` e `EventStore`
+2. contrato evoluído para concorrência mínima e controle de processamento
+3. seleção por ambiente entre `memory` e `mysql`
+4. endpoint `/ready`
+5. testes de integração opcionais com banco real
+
+DECISÃO IMPORTANTE
+O repositório já usa `Drizzle + MySQL`. Por isso o D1 foi implementado no stack real do projeto, em vez de adicionar Prisma/PostgreSQL paralelos. O objetivo funcional foi preservado: persistência real, streams versionados, configuração por ambiente e checagem de prontidão.
+
+VALIDAÇÃO FINAL
+- `pnpm test` -> `148` testes passando, `2` testes de integração opcionais pulados
+- `pnpm build` -> `OK`
+
+ARQUIVOS NOVOS
+
+Schema / documentação:
+- `docs/adr/0013-sql-observation-runtime.md`
+- `docs/architecture/d1-sql-runtime.md`
+
+SQL adapters:
+- `server/infrastructure/persistence/mysql/MysqlObservationRepository.ts`
+- `server/infrastructure/persistence/mysql/MysqlEventStore.ts`
+- `server/infrastructure/persistence/mysql/MysqlObservationRepository.integration.test.ts`
+- `server/infrastructure/persistence/mysql/MysqlEventStore.integration.test.ts`
+
+ARQUIVOS ALTERADOS
+
+Config:
+- `.env.example`
+- `package.json`
+- `server/_core/env.ts`
+
+Runtime / bootstrap:
+- `server/runtime/observationRuntime.ts`
+- `server/_core/index.ts`
+
+Ports:
+- `server/ports/ObservationRepositoryPort.ts`
+- `server/ports/EventStorePort.ts`
+
+Memory implementations:
+- `server/repositories/observation/MemoryObservationRepository.ts`
+- `server/repositories/observation/MemoryObservationRepository.test.ts`
+- `server/infrastructure/event-store/MemoryEventStore.ts`
+- `server/infrastructure/event-store/MemoryEventStore.test.ts`
+
+Pipeline / scheduler:
+- `server/application/observation/ObservationPipeline.ts`
+- `server/application/observation/ObservationPipeline.test.ts`
+- `server/application/observation/ProcessPendingObservationsUseCase.ts`
+- `server/application/observation/ProcessPendingObservationsUseCase.test.ts`
+
+Schema:
+- `drizzle/schema.ts`
+
+Rastreabilidade:
+- `docs/adr/README.md`
+- `docs/architecture/contracts.md`
+- `docs/architecture/m2-traceability.md`
+
+O QUE ENTROU DE FATO
+
+1. Contrato de Observation evoluído
+
+Antes:
+- `save`
+- `findById`
+- `listPending`
+- `markProcessed`
+
+Depois:
+- `save`
+- `findById`
+- `claimPending(limit, workerId)`
+- `completeProcessing(id, success, error?)`
+
+Efeito:
+- o runtime passa a suportar concorrência mínima e ciclo explícito de processamento
+
+2. Contrato de Event Store evoluído
+
+Antes:
+- `append(stream, event)`
+- `get(stream)`
+
+Depois:
+- `append(stream, event, expectedVersion?)`
+- `get(stream)`
+
+Efeito:
+- streams agora suportam `expectedVersion`
+- o adapter real consegue detectar conflito de versão
+
+3. Schema SQL real
+
+Tabelas novas em `drizzle/schema.ts`:
+- `observation_runtime_records`
+- `observation_runtime_events`
+
+O que armazenam:
+- `observation_runtime_records`
+  - dados da observation
+  - `processingStatus`
+  - `claimedBy`
+  - `claimedAt`
+  - `processedAt`
+  - `lastError`
+- `observation_runtime_events`
+  - `stream`
+  - `version`
+  - `type`
+  - `occurredAt`
+  - `payload`
+
+4. MysqlObservationRepository
+
+Capacidades:
+- `save()` com upsert
+- `findById()`
+- `claimPending(limit, workerId)`
+- `completeProcessing(id, success, error?)`
+- `clear()` e `ping()` auxiliares
+
+Semântica:
+- `save()` preserva o estado de processamento existente
+- `claimPending()` reclama registros `PENDING` ou `FAILED`
+- `completeProcessing()` fecha como `PROCESSED` ou `FAILED`
+
+5. MysqlEventStore
+
+Capacidades:
+- `append(stream, event, expectedVersion?)`
+- `get(stream)`
+- `clear()` e `ping()`
+
+Semântica:
+- calcula próxima versão por stream
+- falha se `expectedVersion` não bater
+- devolve o número da nova versão
+
+6. Runtime selecionável por ambiente
+
+Variáveis novas:
+- `OBSERVATION_RUNTIME_DRIVER=memory|mysql`
+- `OBSERVATION_SCHEDULER_ENABLED=true|false`
+- `OBSERVATION_SCHEDULER_INTERVAL_MS`
+- `OBSERVATION_SCHEDULER_BATCH_SIZE`
+
+Regras:
+- default: `memory`
+- se `OBSERVATION_RUNTIME_DRIVER=mysql` e `DATABASE_URL` existir:
+  - runtime usa `MysqlObservationRepository`
+  - runtime usa `MysqlEventStore`
+
+7. `/ready`
+
+Endpoint novo:
+- `GET /ready`
+
+Semântica:
+- `memory` -> pronto imediatamente
+- `mysql` -> faz checagem simples de disponibilidade do banco
+
+Resposta:
+- `200` se pronto
+- `503` se não estiver pronto
+
+8. Pipeline adaptado ao D1
+
+Mudanças no `ObservationPipeline`:
+- grava stream `observation:{id}` com `expectedVersion = 0`
+- grava stream `fact:{id}` com `expectedVersion = 0`
+- em sucesso:
+  - `completeProcessing(observation.id, true)`
+- em falha:
+  - `completeProcessing(observation.id, false, error.message)`
+  - erro é propagado
+
+9. Scheduler adaptado ao D1
+
+`ProcessPendingObservationsUseCase` agora:
+- usa `claimPending(batchSize, workerId)`
+- não depende mais de `listPending()`
+
+Efeito:
+- cada worker reclama um lote
+- o repositório decide o estado do registro
+
+10. Runtime compartilhado endurecido
+
+`createObservationRuntime()` agora:
+- escolhe driver por ambiente
+- instancia repositórios / event store corretos
+- usa batch size e interval do ambiente
+- expõe `checkReady()`
+
+11. Bootstrap endurecido
+
+`server/_core/index.ts` agora:
+- injeta `observationRuntime.inboundService`
+- inicia scheduler somente se `OBSERVATION_SCHEDULER_ENABLED=true`
+- expõe `GET /ready`
+
+TESTES
+
+Suíte padrão:
+- `148` passando
+
+Integração opcional:
+- `2` testes pulados por padrão
+- ativação por:
+  - `RUN_DB_INTEGRATION_TESTS=true`
+
+Script novo:
+- `pnpm test:integration:observation`
+
+O que os testes novos cobrem
+
+Memory repo:
+- `claimPending`
+- `completeProcessing`
+- reprocessamento de `FAILED`
+
+Memory event store:
+- `expectedVersion`
+- conflito de versão
+
+Integração MySQL:
+- save / claim / complete
+- append / get / version
+
+O QUE NÃO FOI FEITO DE PROPÓSITO
+
+- múltiplos workers com lock pessimista forte
+- dead-letter queue
+- retries persistidos por banco
+- dashboard de prontidão
+- migração automática fora do padrão já existente de `drizzle`
+
+Motivo:
+- a rodada foi mantida no menor D1 coerente com a base atual
+- o objetivo foi entregar persistência real sem quebrar a suíte padrão
+
+VEREDITO
+O runtime de `Observation` agora suporta dois modos reais de operação: `memory` e `mysql`. O projeto ganhou adapters SQL concretos, estado explícito de processamento, event store versionado, `/ready` e testes de integração opcionais. Isso fecha o D1 de forma coerente com a stack real do repositório e prepara o terreno para concorrência mais forte, retries persistidos e endurecimento operacional no próximo passo.

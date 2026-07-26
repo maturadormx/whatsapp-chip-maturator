@@ -1,0 +1,20 @@
+Assunto: Submissão Sprint 0 para auditoria
+
+Projeto:
+Ambiente:
+Data:
+
+1. Conteúdo de `sprint0-evidencias.log`
+Cole aqui o conteúdo completo do arquivo.
+
+2. Logs do `npm run dev`
+Cole aqui os logs completos da aplicação.
+
+3. Observações
+- Redis estava disponível? 
+- Endpoint `/internal/metrics` respondeu?
+- Houve algum comportamento inesperado?
+
+4. Comando sugerido para auditoria
+python auditoria.py --log sprint0-evidencias.log --app-logs sprint0-app.log
+

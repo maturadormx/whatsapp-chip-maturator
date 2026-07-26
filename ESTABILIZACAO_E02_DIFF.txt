@@ -1,0 +1,156 @@
+ESTABILIZAÇÃO E0.2 - INVESTIGAÇÃO FORENSE DO AMBIENTE
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-21
+
+1. Objetivo
+- Descobrir quem ou o que bloqueia os arquivos temporários do `esbuild`/`vite` no Windows.
+- Separar definitivamente problema de código/projeto de problema de ambiente/runtime/filesystem.
+
+2. Arquivos alterados
+
+[scripts/build.mjs]
+- Instrumentado para registrar:
+  - `projectRoot`
+  - `runtimeCacheRoot`
+  - `buildCacheRoot`
+  - `buildTmpRoot`
+  - `VITE_CACHE_DIR`
+  - `TEMP`
+  - `TMP`
+  - comprimento de caminhos
+  - operação negada (`remove`, `open`, etc.)
+  - alvo exato negado
+  - timestamps de início/falha
+- Log persistido em `forensics/e02-build-forensics.log`.
+
+3. Ferramentas e testes executados
+
+[forense]
+- `handle.exe` oficial da Microsoft/Sysinternals foi baixado e executado.
+- consultas `Get-CimInstance Win32_Process` foram usadas para mapear `node.exe` e `esbuild.exe`.
+
+[ambiente]
+- `taskkill /F /IM node.exe`
+- limpeza de cache curto em `C:\Users\AORUS\.trae\work\whatsapp-chip-maturator-cache`
+- contraprova em clone curto: `C:\Users\AORUS\wcm-e02`
+- contraprova Linux via `docker build`
+
+4. Evidências capturadas
+
+[A] Caminho exato negado
+- O erro capturado pelo log forense é sempre da forma:
+  - operação: `remove`
+  - alvo: `C:\Users\AORUS\.trae\work\whatsapp-chip-maturator-cache\build\tmp\esbuild-<hash>`
+- Exemplos reais:
+  - `esbuild-05ba091df7f9123408cd03721a38db8e934e038c4078a0284ca53633178ab84a`
+  - `esbuild-f40f8a412ea68109179f639ccb96f637f9ca55f216febe33048d1fbfae6f36df`
+  - `esbuild-a875ecbf982b6f4530277b7d2325f3c7491cb9a9983f05b4c3e971c89de12de8`
+
+[B] Tipo do artefato
+- Os itens `esbuild-*` em `build/tmp` não são diretórios.
+- São arquivos regulares (`PSIsContainer = False`) com ~`3.008.807` bytes.
+- Isso é compatível com artefato/binário temporário do próprio fluxo do `esbuild`.
+
+[C] Handle externo
+- `handle.exe` não encontrou handles correspondentes para:
+  - o caminho exato falhado
+  - o diretório pai `build/tmp`
+- Resultado textual:
+  - `No matching handles found.`
+
+[D] Processos vivos durante o build
+- Foram observados apenas:
+  - `node.exe`
+  - `esbuild.exe`
+- O `esbuild.exe` em execução aponta para:
+  - `C:\Users\AORUS\wcm-e02\node_modules\@esbuild\win32-x64\esbuild.exe`
+- Nenhum processo observado apontou para o arquivo temporário `esbuild-*` negado.
+
+[E] Remoção manual pós-falha
+- Após a falha do build, o mesmo artefato temporário pôde ser removido manualmente:
+  - resultado: `REMOVE_OK`
+- Isso indica:
+  - a negação não é persistente
+  - o lock é transitório durante o ciclo do build
+  - não há evidência de ACL quebrada permanente no arquivo
+
+[F] Defender
+- `Get-MpComputerStatus` indicou proteção em tempo real desativada no ambiente.
+- Portanto, o Defender não apareceu como causa ativa desta rodada.
+
+[G] Caminho curto
+- A contraprova em clone curto foi executada em:
+  - `C:\Users\AORUS\wcm-e02`
+- Mesmo com:
+  - `cwd_length = 22`
+  - `temp_length = 65`
+- o build falhou do mesmo modo:
+  - `[vite:esbuild-transpile] remove ... Access is denied`
+- Portanto, o comprimento do caminho do projeto original NÃO explica sozinho a falha.
+
+[H] Linux / fora do Windows
+- A contraprova via Docker foi executada com `docker build`.
+- No container Linux:
+  - `npm install` passou
+  - `npm run build` passou
+- O build completo concluiu com sucesso no filesystem interno do container.
+
+5. Respostas às perguntas da E0.2
+
+[1] Qual arquivo exato é negado?
+- Arquivos temporários `esbuild-*` em:
+  - `C:\Users\AORUS\.trae\work\whatsapp-chip-maturator-cache\build\tmp`
+
+[2] Qual processo segura o handle?
+- Não foi identificado processo externo segurando handle persistente.
+- `handle.exe` não encontrou correspondência.
+- Durante a execução só aparecem `node.exe` e `esbuild.exe`.
+
+[3] O clone curto funciona?
+- Não.
+- Em `C:\Users\AORUS\wcm-e02`, o build falhou exatamente igual.
+
+[4] Sem Defender funciona?
+- O Defender já estava com proteção em tempo real desativada.
+- Logo, a falha não dependeu dele nesta rodada.
+
+[5] Em Linux funciona?
+- Sim.
+- O build passou integralmente em container Linux.
+
+6. Conclusão técnica
+
+O problema residual está agora fortemente delimitado como:
+- específico do Windows
+- transitório durante a execução do `esbuild`
+- centrado na remoção/cleanup de artefatos temporários `esbuild-*`
+
+O que a E0.2 descartou com boa confiança:
+- código do domínio da aplicação
+- incompatibilidade simples de versões como causa única
+- caminho longo do projeto como causa principal
+- Defender como causa ativa nesta sessão
+- lock persistente por processo externo óbvio (VS Code, Explorer, OneDrive) com evidência direta
+
+Hipótese mais forte após esta rodada:
+- interação Windows-specific entre `vite/esbuild` e a forma como o runtime atual materializa/executa o `esbuild`, gerando lock transitório no momento do cleanup do arquivo temporário.
+
+7. Leitura operacional
+
+Estado atual:
+- `npm run check`: verde
+- `npm test`: verde
+- `npm run build` no Windows: vermelho por cleanup de `esbuild-*`
+- `npm run build` em Linux/container: verde
+
+Diagnóstico operacional:
+- o projeto está saudável
+- o gargalo final é de runtime/filesystem no Windows
+
+8. Próximo passo recomendado
+
+O próximo passo correto não é mexer no domínio da aplicação.
+As opções racionais agora são:
+- adotar build/frontend em WSL ou Docker no Windows
+- ou pesquisar workaround específico para o cleanup do `esbuild` no Windows/Node 22/runtime atual
+- ou testar execução com outro runtime Node Windows fora do empacotamento atual do ambiente

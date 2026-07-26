@@ -1,0 +1,53 @@
+{
+  "datasetId": "chip-empresa",
+  "description": "Perfil com rotina mais institucional, presença de grupos e respostas moderadas.",
+  "replayedAt": "2026-07-17T12:00:00.000Z",
+  "rawEvents": [
+    {
+      "eventType": "session_connected",
+      "source": "whatsapp_runtime",
+      "direction": "system",
+      "occurredAt": "2026-07-16T08:00:00.000Z"
+    },
+    {
+      "eventType": "group_opened",
+      "source": "human_navigation",
+      "direction": "system",
+      "occurredAt": "2026-07-16T08:12:00.000Z",
+      "groupJid": "120363000000001@g.us",
+      "groupSubject": "Equipe Comercial"
+    },
+    {
+      "eventType": "participants_loaded",
+      "source": "human_navigation",
+      "direction": "system",
+      "occurredAt": "2026-07-16T08:13:00.000Z",
+      "groupJid": "120363000000001@g.us",
+      "groupSubject": "Equipe Comercial"
+    },
+    {
+      "eventType": "message_received",
+      "source": "messages.upsert",
+      "direction": "inbound",
+      "occurredAt": "2026-07-16T09:00:00.000Z",
+      "remoteJid": "5511666666666@s.whatsapp.net",
+      "remoteType": "contact",
+      "remoteLabel": "Cliente 1"
+    },
+    {
+      "eventType": "message_sent",
+      "source": "human_reply",
+      "direction": "outbound",
+      "occurredAt": "2026-07-16T09:06:00.000Z",
+      "remoteJid": "5511666666666@s.whatsapp.net",
+      "remoteType": "contact",
+      "remoteLabel": "Cliente 1"
+    },
+    {
+      "eventType": "about_updated",
+      "source": "human_profile",
+      "direction": "system",
+      "occurredAt": "2026-07-16T11:30:00.000Z"
+    }
+  ]
+}

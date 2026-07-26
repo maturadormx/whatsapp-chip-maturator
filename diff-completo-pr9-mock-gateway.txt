@@ -1,0 +1,140 @@
+DIFF COMPLETO — PR #9 / MOCKGATEWAY
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-20
+
+OBJETIVO DO MARCO
+Criar uma implementação concreta de `MessageGateway` para testes e desenvolvimento local, sem depender de infraestrutura externa e sem reabrir o núcleo operacional estabilizado.
+
+RESULTADO FINAL
+- `MockMessageGateway` criado
+- configuração de comportamento do mock criada
+- testes unitários do mock criados
+- integração `ExecutionService -> MockMessageGateway` criada
+- documentação do PR #9 criada
+- rastreabilidade atualizada
+
+VALIDAÇÃO FINAL
+- `pnpm test` -> `112/112` testes passando
+- `pnpm build` -> `OK`
+
+COMMIT 1 — MOCKMESSAGEGATEWAY
+
+Arquivos criados:
+- `server/gateways/mock/MockConfig.ts`
+- `server/gateways/mock/MockMessageGateway.ts`
+- `server/gateways/mock/index.ts`
+
+O que entrou:
+- `MockConfig`
+- `MockMessageGateway`
+- barrel export do mock
+
+Capacidades do mock:
+- atraso configurável (`defaultDelayMs`)
+- taxa de falha (`failureRate`)
+- taxa de timeout (`timeoutRate`)
+- resultados fixos por `executionId`
+- histórico de mensagens enviadas
+- reset de estado
+- contagem de envios por `executionId`
+
+Decisão importante:
+- o mock implementa `MessageGateway` fielmente
+- ele não altera:
+  - retry
+  - budget
+  - ledger
+  - estados
+
+COMMIT 2 — TESTES UNITÁRIOS DO MOCK
+
+Arquivo criado:
+- `tests/unit/gateways/mock/MockMessageGateway.test.ts`
+
+Casos cobertos:
+- retorno `ACKED` por padrão
+- falha quando `failureRate = 1`
+- timeout quando `timeoutRate = 1`
+- resultado fixo por `executionId`
+- registro de mensagens enviadas
+- reset de estado
+- propagação do `attempt`
+
+Efeito prático:
+- o mock deixou de ser só implementação auxiliar e passou a ter contrato executável próprio
+
+COMMIT 3 — INTEGRAÇÃO COM EXECUTIONSERVICE
+
+Arquivo alterado:
+- `tests/integration/gateway-execution.test.ts`
+
+O que mudou:
+- a suíte deixou de usar `FakeMessageGateway`
+- passou a usar `MockMessageGateway`
+
+Casos validados:
+- delegação do envio ao mock
+- `ACKED -> COMMITTED`
+- `FAILED -> FAILED/RELEASED`
+- `TIMEOUT -> FAILED/RELEASED`
+- idempotência preservada
+
+Decisão importante:
+- a integração foi mantida sobre a API pública real:
+  - `executeBehaviorAction(...)`
+  - `retryBehaviorActionExecution(...)`
+
+COMMIT 4 — DOCUMENTAÇÃO
+
+Arquivo criado:
+- `docs/architecture/m2-fase3-mock-gateway.md`
+
+Arquivo alterado:
+- `docs/architecture/m2-traceability.md`
+
+O que a documentação registra:
+- objetivo do PR #9
+- escopo incluído e excluído
+- arquitetura do mock
+- regras de isolamento
+- entregas por commit
+- estado atual do marco
+
+MUDANÇAS DE DOCUMENTAÇÃO IMPORTANTES
+- o `m2-traceability` agora inclui o PR #9 como próximo marco concluído localmente
+- o documento da fase registra explicitamente que:
+  - `Clock`
+  - `Inbound`
+  - `Recovery`
+  - `Event Store`
+  continuam fora deste escopo
+
+O QUE NÃO FOI ALTERADO DE PROPÓSITO
+- `ExecutionService`
+- `RetryService`
+- `BudgetReservationService`
+- `Ledger`
+- `Control Center`
+
+Motivo:
+- o mock foi introduzido como implementação concreta do contrato, não como mudança do núcleo
+
+EVOLUÇÃO DA SUÍTE
+
+Antes do PR #9:
+- `105/105`
+
+Depois do PR #9:
+- `112/112`
+
+ARQUIVOS IMPACTADOS
+- `server/gateways/mock/MockConfig.ts`
+- `server/gateways/mock/MockMessageGateway.ts`
+- `server/gateways/mock/index.ts`
+- `tests/unit/gateways/mock/MockMessageGateway.test.ts`
+- `tests/integration/gateway-execution.test.ts`
+- `docs/architecture/m2-fase3-mock-gateway.md`
+- `docs/architecture/m2-traceability.md`
+
+VEREDITO
+O PR #9 está concluído localmente: o `MockMessageGateway` existe, respeita o contrato do `MessageGateway`, está coberto por testes unitários e de integração e não reabre o núcleo operacional. O próximo passo natural no roadmap continua sendo o `PR #10 — Clock`.

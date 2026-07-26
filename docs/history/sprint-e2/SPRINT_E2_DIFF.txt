@@ -1,0 +1,173 @@
+SPRINT E2 — PREPARAÇÃO LOCAL DE PROMOÇÃO (BASELINE + CI/CD + DEPLOY NÃO VALIDADO)
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-22
+
+1. Objetivo
+- Transformar o GO operacional da E1 em baseline local de promoção.
+- Separar CI, publicação de imagem e deploy por responsabilidade.
+- Adicionar compose de produção, smoke test, backup/restore e rollback documentado.
+
+2. Arquivos entregues
+
+[Baseline]
+- `SPRINT_E2_BASELINE.md`
+- `scripts/tag-operational.ps1`
+
+[CI/CD]
+- `.github/workflows/ci.yml`
+- `.github/workflows/docker.yml`
+- `.github/workflows/deploy-staging.yml`
+- `.github/workflows/deploy-production.yml`
+
+[Promoção local]
+- `docker-compose.prod.yml`
+- `scripts/smoke-production.sh`
+- `scripts/backup-mysql.sh`
+- `scripts/restore-mysql.sh`
+- `scripts/rollback-production.sh`
+
+[Container]
+- `Dockerfile`
+
+3. Mudanças principais
+
+3.1) Baseline operacional congelada
+- Documento de baseline criado com tag de referência:
+  - `v1.0.0-operational`
+- Instrução operacional registrada:
+  - preservar a baseline
+  - evoluir em branch dedicada, por exemplo `release/e2-production`
+
+3.2) CI separado por responsabilidade
+- `ci.yml`
+  - checkout
+  - `npm ci`
+  - `prettier --check`
+  - `npm run check`
+  - `npm test`
+  - `docker build`
+  - `python -m py_compile auditoria.py`
+
+- `docker.yml`
+  - login no GHCR
+  - build/push da imagem
+  - tags:
+    - `latest`
+    - `sha`
+    - `tag`
+
+- `deploy-staging.yml`
+  - gera `.env.staging`
+  - sobe `docker-compose.prod.yml`
+  - executa smoke test
+
+- `deploy-production.yml`
+  - gera `.env.prod`
+  - sobe `docker-compose.prod.yml`
+  - executa smoke test
+  - roda rollback em caso de falha
+
+3.3) Compose de promoção local
+- Novo `docker-compose.prod.yml`
+- Serviços:
+  - `app`
+  - `mysql`
+  - `redis`
+- `app` com:
+  - `NODE_ENV=production`
+  - runtime mysql
+  - queue e scheduler habilitados
+  - `RUN_MIGRATIONS_ON_START=true`
+
+3.4) Container pronto para migração
+- `Dockerfile` alterado para:
+  - instalar dependências completas no runner
+  - copiar `drizzle/`
+  - suportar `npm run db:push` antes do `start`
+
+Comando final do container:
+- se `RUN_MIGRATIONS_ON_START=true`:
+  - executa `npm run db:push`
+  - depois executa `npm run start`
+
+3.5) Operação de promoção local
+- `scripts/smoke-production.sh`
+  - valida:
+    - `/live`
+    - `/ready`
+    - `/health`
+    - `/internal/metrics`
+    - POST em `/api/inbound/events`
+    - presença de métricas de queue/pipeline
+
+- `scripts/backup-mysql.sh`
+  - executa `mysqldump`
+  - comprime
+  - gera `sha256`
+
+- `scripts/restore-mysql.sh`
+  - restaura backup `.sql.gz`
+
+- `scripts/rollback-production.sh`
+  - derruba/sube a stack de produção
+  - roda smoke test ao final
+
+4. Validação executada nesta rodada
+
+Executado:
+- `npm run check`
+
+Resultado:
+- verde
+
+Limitação prática desta rodada:
+- os workflows de GitHub Actions e os deploys completos dependem de:
+  - repositório remoto
+  - secrets de staging/produção
+  - runner GitHub
+- portanto, os arquivos foram entregues e preparados, mas não podem ser tratados como produção validada sem ambiente GitHub e secrets reais.
+
+5. Leitura de maturidade
+
+Após esta entrega, o projeto passa a ter:
+- baseline operacional congelável
+- CI contínuo formalizado
+- pipeline de imagem Docker formalizado
+- deploy staging/prod descrito em arquivo
+- smoke test E2E local
+- backup/restore local documentado em script
+- rollback local documentado em script
+
+6. Pendência conhecida
+
+Continua válida:
+- `INFRA-02 — Windows Runtime / esbuild cleanup lock`
+
+Status:
+- Known Issue
+- não bloqueante
+- workaround oficial: Docker/WSL
+
+7. Próximo passo recomendado
+
+No ambiente GitHub real:
+1. criar a tag `v1.0.0-operational`
+2. abrir branch `release/e2-production`
+3. cadastrar secrets:
+   - `STAGING_DATABASE_URL`
+   - `STAGING_REDIS_URL`
+   - `STAGING_JWT_SECRET`
+   - `STAGING_OAUTH_SERVER_URL`
+   - `STAGING_VITE_OAUTH_PORTAL_URL`
+   - `STAGING_VITE_APP_ID`
+   - `PROD_DATABASE_URL`
+   - `PROD_REDIS_URL`
+   - `PROD_JWT_SECRET`
+   - `PROD_OAUTH_SERVER_URL`
+   - `PROD_VITE_OAUTH_PORTAL_URL`
+   - `PROD_VITE_APP_ID`
+4. disparar:
+   - `ci.yml`
+   - `docker.yml`
+   - `deploy-staging.yml`
+5. validar homologação e então liberar `deploy-production.yml`

@@ -1,0 +1,25 @@
+{
+  "datasetId": "chip-novo",
+  "description": "Chip recém-conectado com presença mínima e sem conversas reais.",
+  "replayedAt": "2026-07-17T12:00:00.000Z",
+  "rawEvents": [
+    {
+      "eventType": "session_connected",
+      "source": "whatsapp_runtime",
+      "direction": "system",
+      "occurredAt": "2026-07-16T09:00:00.000Z"
+    },
+    {
+      "eventType": "contacts_synced",
+      "source": "whatsapp_runtime",
+      "direction": "system",
+      "occurredAt": "2026-07-16T09:02:00.000Z"
+    },
+    {
+      "eventType": "chat_list_opened",
+      "source": "maturation_boot",
+      "direction": "system",
+      "occurredAt": "2026-07-16T09:10:00.000Z"
+    }
+  ]
+}

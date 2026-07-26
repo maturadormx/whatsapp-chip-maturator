@@ -1,0 +1,211 @@
+DIFF COMPLETO — PR #7 VALIDAÇÃO ARQUITETURAL DA FASE 1
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-20
+
+OBJETIVO DA RODADA
+Executar o PR #7 no enquadramento correto:
+
+- adicionar a suíte E2E arquitetural da Fase 1 em `tests/integration`
+- sincronizar rastreabilidade, invariantes, state machine e diagramas
+- atualizar artefatos de release
+- corrigir apenas bugs e inconsistências revelados pela validação
+
+RESULTADO FINAL
+- a suíte `tests/integration/m2-fase1-e2e.test.ts` foi criada
+- o Vitest foi corrigido para realmente descobrir `tests/**/*.test.ts`
+- a documentação pedida pelo arquivo foi sincronizada
+- dois imports antigos quebrados em `tests/behavior/regressions` foram corrigidos
+- uma asserção frágil em `policyProperties` foi alinhada ao contrato real do engine
+
+VALIDAÇÃO FINAL
+- `pnpm test` -> `93/93` testes passando
+- `29` arquivos de teste
+- `pnpm build` -> `OK`
+
+ARQUIVOS NOVOS
+
+1. `tests/integration/m2-fase1-e2e.test.ts`
+O que foi criado:
+- suíte E2E arquitetural da Fase 1 no caminho exato pedido pelo arquivo
+
+Estrutura entregue:
+- harness em memória conectada aos serviços reais:
+  - `executeBehaviorAction(...)`
+  - `retryBehaviorActionExecution(...)`
+  - `runBehaviorRetryCycle(...)`
+- helpers de invariantes:
+  - sem reserva órfã
+  - ledger consistente
+  - `executionId` único
+  - `attempt` monotônico
+  - budget correto
+  - ausência de envio duplicado
+
+Cinco cenários implementados:
+1. envio com sucesso
+2. falha + release
+3. retry com novo attempt
+4. budget insuficiente
+5. idempotência
+
+Efeito prático:
+- a validação arquitetural da Fase 1 agora existe no formato operacional pedido para o PR #7
+
+2. `docs/architecture/m2-traceability.md`
+O que foi criado:
+- versão Markdown da rastreabilidade do Marco 2 / Fase 1
+
+Conteúdo principal:
+- Bloco A = Done
+- Bloco B = Done
+- evidência da validação integrada
+- gate de encerramento
+
+Efeito prático:
+- o repositório passa a ter uma versão navegável da rastreabilidade, além da matriz TXT
+
+3. `docs/architecture/diagrams/m2-fase1-sequencias.md`
+O que foi criado:
+- diagramas Mermaid da Fase 1
+
+Conteúdo:
+- happy path
+- falha + retry
+
+Efeito prático:
+- o estado operacional da fase ganhou representação visual reutilizável
+
+ARQUIVOS ALTERADOS
+
+4. `vitest.config.ts`
+Problema encontrado:
+- a configuração do Vitest só incluía `server/**/*.test.ts`
+- isso fazia o novo arquivo em `tests/integration` não ser executado
+
+Correção aplicada:
+- include passou a aceitar também:
+  - `tests/**/*.test.ts`
+  - `tests/**/*.spec.ts`
+
+Efeito prático:
+- o PR #7 agora valida de verdade o arquivo criado em `tests/integration`
+
+5. `docs/architecture/invariants.md`
+O que mudou:
+- adicionei a seção da validação operacional do PR #7
+- os cinco cenários e os seis invariantes passaram a estar explicitamente vinculados ao teste E2E
+
+Efeito prático:
+- os invariantes não ficam mais só implícitos na suíte
+
+6. `docs/architecture/state-machine.md`
+O que mudou:
+- adicionei a seção de validação integrada do PR #7
+- a máquina agora referencia explicitamente os cenários exercitados no E2E
+
+Efeito prático:
+- a state machine fica sincronizada com a prova executável
+
+7. `matriz-rastreabilidade-marco2.txt`
+O que mudou:
+- a evidência da validação integrada da Fase 1 passou a apontar para:
+  - `tests/integration/m2-fase1-e2e.test.ts`
+
+Efeito prático:
+- a matriz principal ficou alinhada ao formato final do PR #7
+
+8. `CHANGELOG.md`
+O que mudou:
+- acrescentei a suíte E2E da Fase 1
+- acrescentei a sincronização de rastreabilidade, invariantes, state machine e diagramas
+
+Efeito prático:
+- o changelog da baseline passou a refletir a validação arquitetural final
+
+9. `RELEASE-NOTES.md`
+O que mudou:
+- acrescentei que a baseline agora inclui o E2E arquitetural da Fase 1 sobre os serviços existentes
+
+Efeito prático:
+- release notes ficam mais coerentes com o estado real do repositório
+
+10. `tests/behavior/regressions/issue-017-birth-threshold.test.ts`
+11. `tests/behavior/regressions/issue-021-budget-zero.test.ts`
+Problema encontrado:
+- os imports estavam apontando um nível acima do caminho correto
+- esses testes só ficaram expostos quando a configuração do Vitest passou a incluir `tests/`
+
+Correção aplicada:
+- caminho ajustado para `../../../server/...`
+
+Efeito prático:
+- os testes de regressão voltaram a ser executáveis dentro da suíte completa
+
+12. `tests/behavior/contracts/policyProperties.test.ts`
+Problema encontrado:
+- uma asserção assumia que o `reason` sempre continha o nome textual da regra que falhou
+- isso não é o contrato real do engine
+
+Correção aplicada:
+- a asserção passou a verificar se o `reason` coincide com o `detail` de algum check em `FAIL`
+
+Efeito prático:
+- o teste passou a validar o comportamento real do engine, não uma convenção textual acidental
+
+BUGS ENCONTRADOS E CORRIGIDOS PELO PR #7
+
+1. Falso verde do Vitest
+- a suíte nova existia, mas não era descoberta
+- corrigido em `vitest.config.ts`
+
+2. Dois imports quebrados em testes antigos
+- corrigidos nos regressions tests
+
+3. Uma propriedade de teste desalinhada do contrato real
+- corrigida em `policyProperties.test.ts`
+
+O QUE NÃO FOI FEITO
+- nenhum refactor estrutural
+- nenhuma nova feature de domínio
+- nenhuma abertura da Fase 2
+- nenhum `MessageGateway`
+- nenhum `MockGateway`
+- nenhum `Clock`
+- nenhuma `git tag` real
+
+Motivo:
+- o arquivo enviado foi seguido no enquadramento correto do PR #7: validar primeiro, evoluir depois
+
+GANHO DE PROCESSO
+Antes:
+- havia validação integrada em `server/services/...`
+- mas não havia ainda a suíte formal em `tests/integration` no formato pedido
+- a configuração do runner escondia parte dos testes em `tests/`
+
+Depois:
+- o projeto executa `server/` e `tests/`
+- o E2E arquitetural existe no local esperado
+- a documentação ficou sincronizada com a suíte
+
+GANHO ARQUITETURAL
+Esta rodada não expande o domínio, mas fortalece a baseline porque:
+- prova os cinco cenários principais da Fase 1
+- revela e corrige lacunas na configuração do runner
+- sincroniza documentação e prova executável
+
+LISTA CONSOLIDADA DOS ARQUIVOS IMPACTADOS
+- `tests/integration/m2-fase1-e2e.test.ts`
+- `vitest.config.ts`
+- `docs/architecture/m2-traceability.md`
+- `docs/architecture/invariants.md`
+- `docs/architecture/state-machine.md`
+- `docs/architecture/diagrams/m2-fase1-sequencias.md`
+- `matriz-rastreabilidade-marco2.txt`
+- `CHANGELOG.md`
+- `RELEASE-NOTES.md`
+- `tests/behavior/regressions/issue-017-birth-threshold.test.ts`
+- `tests/behavior/regressions/issue-021-budget-zero.test.ts`
+- `tests/behavior/contracts/policyProperties.test.ts`
+
+VEREDITO
+O PR #7 ficou materializado no formato pedido: suíte E2E em `tests/integration`, documentação sincronizada, release artifacts atualizados e runner corrigido para executar a validação completa. Com isso, a Fase 1 não está só pronta para tag em termos conceituais; ela agora tem um gate de validação arquitetural realmente executado pela suíte oficial.

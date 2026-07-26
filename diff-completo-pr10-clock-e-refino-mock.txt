@@ -1,0 +1,205 @@
+DIFF COMPLETO — PR #10 CLOCK + REFINO DO MOCKMESSAGEGATEWAY
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-20
+
+OBJETIVO DA RODADA
+Executar o próximo pacote arquitetural útil solicitado no arquivo:
+
+1. introduzir a abstração `Clock`
+2. separar `Clock` de `TestClock`
+3. injetar `Clock` no `ExecutionService`
+4. refinar o `MockMessageGateway` para fila determinística
+5. adicionar ADRs e checklist de arquitetura
+
+RESULTADO FINAL
+- `Clock` criado
+- `TestClock` criado
+- `SystemClock` e `FakeClock` criados
+- `ExecutionService` passou a depender de `Clock`
+- `MockMessageGateway` deixou de usar taxas probabilísticas e passou a usar fila determinística
+- checklist e ADRs do clock foram criados
+- a base continuou verde
+
+VALIDAÇÃO FINAL
+- `pnpm test` -> `118/118` testes passando
+- `pnpm build` -> `OK`
+
+BLOCO 1 — CLOCK / TESTCLOCK
+
+Arquivos criados:
+- `server/clock/Clock.ts`
+- `server/clock/TestClock.ts`
+- `server/clock/SystemClock.ts`
+- `server/clock/FakeClock.ts`
+- `server/clock/index.ts`
+
+O que foi entregue:
+- `Clock` de produção com:
+  - `now(): Date`
+- `TestClock` de teste com:
+  - `advanceBy(ms)`
+  - `set(date)`
+  - `reset()`
+- `SystemClock` implementando apenas `Clock`
+- `FakeClock` implementando `TestClock`
+
+Decisão arquitetural importante:
+- o núcleo conhece apenas `Clock`
+- a API de teste não vaza para produção
+
+Efeito prático:
+- o projeto passa a ter abstração de tempo simétrica ao padrão já usado em `MessageGateway`
+
+BLOCO 2 — EXECUTIONSERVICE AGORA DEPENDE DE CLOCK
+
+Arquivo alterado:
+- `server/services/behavior/executionService.ts`
+
+O que mudou:
+- `BehaviorExecutionDeps` ganhou:
+  - `clock: Clock`
+- os defaults passaram a usar:
+  - `new SystemClock()`
+
+Onde o clock passou a ser usado:
+- timestamps do dispatcher
+- `lastRetryAt`
+- cálculo de `nextRetryAt`
+- transições de retry posteriores
+
+O que não mudou:
+- retry policy
+- budget reservation
+- ledger
+- estados operacionais
+- contrato do gateway
+
+Efeito prático:
+- o serviço continua com o mesmo comportamento, mas agora sem depender implicitamente do relógio global para o núcleo comportamental
+
+BLOCO 3 — REFINO DO MOCKMESSAGEGATEWAY
+
+Arquivos alterados:
+- `server/gateways/mock/MockConfig.ts`
+- `server/gateways/mock/MockMessageGateway.ts`
+- `tests/unit/gateways/mock/MockMessageGateway.test.ts`
+- `tests/integration/gateway-execution.test.ts`
+- `docs/architecture/m2-fase3-mock-gateway.md`
+
+O que saiu:
+- `failureRate`
+- `timeoutRate`
+- `fixedResults`
+
+O que entrou:
+- `initialResults?: GatewayResult[]`
+- `enqueueResult(result)`
+- consumo ordenado da fila de resultados
+
+Nova semântica do mock:
+- cada `send()` consome o próximo resultado explícito
+- `TIMEOUT` da fila gera `GATEWAY_TIMEOUT`
+- `FAILED` da fila gera resultado de falha
+- sem configuração probabilística
+
+Por que isso importa:
+- testes deixam de ser configurados por taxa
+- cenários passam a ser literais e sequenciais
+- fica trivial representar:
+  - `FAILED -> FAILED -> ACKED`
+  - `TIMEOUT -> ACKED`
+
+Também foram adicionados/ajustados helpers:
+- `wasSent()`
+- `sendCount()`
+- `getSentMessages(): readonly`
+- `reset()` limpando histórico e fila
+
+BLOCO 4 — TESTES NOVOS E AJUSTADOS
+
+Arquivo criado:
+- `tests/unit/clock/FakeClock.test.ts`
+
+Casos cobertos:
+- `now()` determinístico
+- `advanceBy()`
+- `set()`
+- `reset()`
+- `SystemClock.now()`
+
+Arquivo ajustado:
+- `tests/integration/gateway-execution.test.ts`
+
+O que foi validado:
+- integração agora usa `MockMessageGateway`
+- cenários de `FAILED` e `TIMEOUT` usam fila determinística
+- foi adicionada verificação de `nextRetryAt` usando `FakeClock`
+
+Impacto na suíte:
+- antes desta rodada: `112/112`
+- depois desta rodada: `118/118`
+
+BLOCO 5 — ADRS E GOVERNANÇA
+
+Arquivos criados:
+- `docs/adr/ADR-007-clock-abstraction.md`
+- `docs/adr/ADR-008-test-clock-separation.md`
+- `docs/reviews/architecture-checklist.md`
+- `docs/architecture/m2-pr10-clock.md`
+
+Arquivo atualizado:
+- `docs/architecture/m2-traceability.md`
+
+O que isso formaliza:
+- decisão do `Clock` como abstração fundamental
+- separação formal entre contrato de produção e contrato de teste
+- checklist versionada para futuros PRs
+- rastreabilidade do `PR #10`
+
+DECISÕES ARQUITETURAIS MATERIALIZADAS
+
+1. Produção não conhece métodos de teste
+- `Clock` expõe apenas `now()`
+
+2. Testes controlam o tempo sem poluir o domínio
+- `FakeClock` implementa `TestClock`
+
+3. Mock do gateway é determinístico
+- fila explícita
+- sem taxas probabilísticas
+
+4. Núcleo continua dependendo de contratos
+- `MessageGateway`
+- `Clock`
+
+O QUE NÃO FOI FEITO DE PROPÓSITO
+- `LedgerRepository`
+- `Inbound`
+- `Recovery`
+- `Event Store`
+- alterações estruturais em `RetryService` ou `BudgetReservationService`
+
+Motivo:
+- a rodada foi mantida estritamente no escopo do `Clock` e da limpeza arquitetural pedida no arquivo
+
+ARQUIVOS IMPACTADOS
+- `server/clock/Clock.ts`
+- `server/clock/TestClock.ts`
+- `server/clock/SystemClock.ts`
+- `server/clock/FakeClock.ts`
+- `server/clock/index.ts`
+- `server/services/behavior/executionService.ts`
+- `server/gateways/mock/MockConfig.ts`
+- `server/gateways/mock/MockMessageGateway.ts`
+- `tests/unit/gateways/mock/MockMessageGateway.test.ts`
+- `tests/unit/clock/FakeClock.test.ts`
+- `tests/integration/gateway-execution.test.ts`
+- `docs/adr/ADR-007-clock-abstraction.md`
+- `docs/adr/ADR-008-test-clock-separation.md`
+- `docs/reviews/architecture-checklist.md`
+- `docs/architecture/m2-pr10-clock.md`
+- `docs/architecture/m2-fase3-mock-gateway.md`
+- `docs/architecture/m2-traceability.md`
+
+VEREDITO
+Esta rodada fecha dois pontos arquiteturais importantes ao mesmo tempo: completa o `PR #10 — Clock` e corrige o principal risco do `MockMessageGateway`, substituindo configuração probabilística por fila determinística. Com isso, o núcleo passa a depender das abstrações fundamentais corretas (`MessageGateway` e `Clock`), e a base fica mais previsível para os próximos marcos, especialmente `LedgerRepository`.

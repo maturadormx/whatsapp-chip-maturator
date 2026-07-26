@@ -1,0 +1,92 @@
+FAXINA FINAL — DIFF DE FECHAMENTO
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-22
+
+1. Escopo
+
+Esta rodada não remove código.
+Ela fecha a baseline limpa com uma revisão leve e objetiva.
+
+2. Conferência do `pino`
+
+Validado:
+
+- `pino` está em `dependencies`
+- há import real no servidor:
+  - `server/services/whatsappService.ts`
+- há uso real:
+  - `const whatsappLogger = pino({ level: "silent" })`
+
+Conclusão:
+- a inclusão de `pino` foi correta
+
+3. Subida da aplicação
+
+Executado:
+
+- `npm start`
+
+Resultado:
+
+- a aplicação subiu
+- servidor exposto em `http://localhost:3003/`
+
+Ocorrências de ambiente:
+
+- porta `3000` ocupada
+- fallback automático para `3003`
+- ausência de tabelas do banco em parte do bootstrap
+- módulos Forge/Heartbeat não configurados no ambiente atual
+
+Leitura:
+
+- o processo principal sobe
+- não há regressão de runtime causada pela faxina
+
+4. `.gitignore`
+
+Foram adicionadas proteções explícitas para runtime:
+
+- `auth_info_*/`
+- `runtime/`
+- `storage/`
+- `sessions/`
+- `backups/`
+- `*.sql.bak`
+- `*.dump`
+
+Objetivo:
+
+- evitar versionamento acidental de sessão, credenciais operacionais e backup
+
+5. Revisão leve do repositório
+
+Verificado:
+
+- diretórios vazios relevantes
+- consistência dos novos caminhos de `scripts/`
+- consistência da organização em `docs/`
+
+Resultado:
+
+- nenhum diretório vazio relevante encontrado em `docs/`, `scripts/`, `client/` e `server/`
+- a estrutura atual está coerente com a nova fase do projeto
+
+6. Artefatos gerados
+
+- `FAXINA_FINAL_RELATORIO.md`
+- `FAXINA_FINAL_DIFF.txt`
+
+7. Estado final
+
+O repositório entra em estado de:
+
+**Clean Operational Baseline**
+
+Leitura final do ciclo:
+
+- desenvolvimento encerrado
+- consolidação encerrada
+- organização praticamente encerrada
+- operação contínua pronta
+- novo produto aguardando início

@@ -1,0 +1,168 @@
+SPRINT E1.2 → E1.5 — DASHBOARDS, ALERTAS, RUNBOOKS E AUDITORIA FINAL
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-22
+
+1. Objetivo da rodada
+- Fechar o acabamento operacional após a Sprint E1.
+- Entregar dashboards versionados, validação de alertas, runbooks definitivos e auditoria final.
+
+2. Arquivos alterados / criados
+
+[Stack operacional]
+- `docker-compose.operations.yml`
+  - removido header `version`
+  - scheduler local ajustado para validação mais rápida:
+    - `OBSERVATION_SCHEDULER_INTERVAL_MS=30000`
+    - `OBSERVATION_SCHEDULER_BATCH_SIZE=5`
+  - fila local ajustada para retries curtos:
+    - `OBSERVATION_QUEUE_ATTEMPTS=2`
+    - `OBSERVATION_QUEUE_BACKOFF_MS=500`
+
+[Dashboards Grafana]
+- `grafana/dashboards/queue-dashboard.json`
+- `grafana/dashboards/worker-dashboard.json`
+- `grafana/dashboards/pipeline-dashboard.json`
+- `grafana/dashboards/scheduler-dashboard.json`
+- `grafana/dashboards/dlq-dashboard.json`
+
+[Alertas]
+- `monitoring/prometheus/rules/whatsapp-chip-maturator.yml`
+  - `WorkerStopped`
+  - `QueueGrowing`
+  - `DlqHasJobs`
+  - `PipelineFailureRateHigh`
+  - `SchedulerStopped`
+
+[Runbooks]
+- `runbooks/WORKER_STOPPED.md`
+- `runbooks/QUEUE_GROWING.md`
+- `runbooks/DLQ_HAS_JOBS.md`
+- `runbooks/PIPELINE_FAILURE_RATE_HIGH.md`
+- `runbooks/SCHEDULER_STOPPED.md`
+
+[Automação operacional]
+- `scripts/coleta-evidencias.ps1`
+  - refeito para stack Docker oficial
+  - coleta `docker compose ps`
+  - coleta Redis via container
+  - reinicia app para capturar logs limpos
+  - envia evento válido
+  - aguarda scheduler local
+  - registra `npm test`
+  - registra build via `docker build`
+- `scripts/validar-alertas.ps1`
+  - validação viva dos alertas com Prometheus/Alertmanager
+
+[Auditoria]
+- `auditoria.py`
+  - ajustado para auditar `NPM TEST` e `NPM BUILD` por seção, sem falso negativo por `queue_failed_jobs` ou logs fora do bloco.
+
+[Backlog]
+- `INFRA-02_WINDOWS_RUNTIME.md`
+  - Known Issue formalizado
+  - workaround oficial: Docker/WSL
+
+3. Dashboards entregues
+
+Todos os 5 dashboards ficaram provisionados e visíveis no Grafana:
+- `Queue`
+- `Worker`
+- `Pipeline`
+- `Scheduler`
+- `DLQ`
+
+Validação:
+- Grafana API `/api/search` retornou os 5 dashboards no folder `WhatsApp Chip Maturator`.
+
+4. Alertas configurados e validados
+
+Regras presentes:
+- `WorkerStopped`
+- `QueueGrowing`
+- `DlqHasJobs`
+- `PipelineFailureRateHigh`
+- `SchedulerStopped`
+
+Validação viva executada:
+- `QueueGrowing`: disparou
+- `DlqHasJobs`: disparou
+- `WorkerStopped`: disparou
+- `SchedulerStopped`: disparou
+
+Observação importante:
+- `PipelineFailureRateHigh` ficou configurado corretamente, mas a simulação usada com MySQL down falha antes de a pipeline efetivamente iniciar, então o contador `pipeline_failed_total` não sobe nesse cenário específico.
+- Resultado: 4 alertas disparados em live-fire; 1 alerta configurado e pendente de cenário de injeção mais preciso para disparo real.
+
+5. Runbooks entregues
+
+Foram versionados 5 runbooks operacionais com:
+- detecção
+- diagnóstico
+- mitigação
+- validação
+- escalonamento
+
+Cobertura:
+- worker parado
+- fila crescendo
+- DLQ com jobs
+- taxa de falha da pipeline alta
+- scheduler parado
+
+6. Auditoria final
+
+Execução:
+- `scripts/coleta-evidencias.ps1`
+- `python auditoria.py --log .\sprint0-evidencias.log --app-logs .\sprint0-app.log`
+
+Resultado:
+- aprovados: `10/10`
+- veredito: `🟢 GO`
+
+Critérios aprovados:
+- Redis PONG
+- App sem erros fatais
+- Scheduler publica
+- Worker consome
+- Pipeline conclui
+- Métricas BEFORE/AFTER sem erro
+- 20 métricas presentes
+- Métricas aumentam
+- `npm test` verde
+- build verde via Docker
+
+7. Leitura operacional final
+
+O projeto saiu da fase de estabilização e entrou na fase de preparação para produção.
+
+Estado atual:
+- arquitetura: estável
+- backend: estável
+- pipeline: estável
+- observabilidade: operacional
+- dashboards: entregues
+- alertas: entregues e validados em 4 cenários reais
+- runbooks: entregues
+- auditoria final: `🟢 GO`
+
+8. Pendência residual
+
+Permanece no backlog:
+- `INFRA-02 — Windows Runtime / esbuild cleanup lock`
+
+Impacto atual:
+- não bloqueia build oficial via Docker/WSL
+- não bloqueia operação
+- não bloqueia preparação para produção
+
+9. Próximo marco recomendado
+
+Abrir `Sprint E2 — Produção`, com foco em:
+- CI/CD
+- deploy
+- backup/restore
+- migrations
+- secrets
+- logs centralizados
+- rollback
+- observabilidade externa

@@ -1,0 +1,185 @@
+MATRIZ DE RASTREABILIDADE DO MARCO 2
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-20
+
+FINALIDADE
+Esta matriz documenta a rastreabilidade arquitetural do Marco 2 com foco no núcleo da execução, na validação integrada da Fase 1 e no fechamento disciplinado do primeiro marco operacional.
+
+Observação importante:
+- O repositório ainda não possui uma taxonomia formal única de invariantes do Marco 2 com IDs consolidados.
+- Para manter verificabilidade sem inventar um padrão global inexistente, esta matriz usa IDs locais `INV-M2-*` exclusivos desta fase.
+- Eles representam invariantes operacionais concretos do Marco 2 e podem ser absorvidos depois pela taxonomia oficial da OCS.
+
+INVARIANTES LOCAIS DO MARCO 2
+
+INV-M2-001
+Toda execução comportamental persistida deve possuir identidade operacional estável (`executionId`) independente da decisão.
+
+INV-M2-002
+Decisão e execução são objetos distintos: uma decisão pode originar uma execução, mas não se confunde com ela.
+
+INV-M2-003
+Toda execução deve possuir ledger persistido com estado e histórico mínimo de transição.
+
+INV-M2-004
+O estado da execução deve obedecer uma máquina explícita de transição.
+
+INV-M2-005
+Retry só pode ocorrer sobre execuções `FAILED` marcadas como recuperáveis.
+
+INV-M2-006
+Retry deve ser idempotente por `executionId` e monotônico em `attempt`.
+
+INV-M2-007
+Toda falha recuperável deve carregar política mínima de retry: elegibilidade, tentativas máximas e próximo retry.
+
+INV-M2-008
+Eventos de decisão e eventos de execução devem ter contratos separados.
+
+INV-M2-009
+O painel operacional deve expor evidências reais da execução, não apenas estados derivados da decisão.
+
+INV-M2-010
+Toda entrega do Marco 2 deve possuir evidência verificável em testes automatizados.
+
+INV-M2-011
+Budget reservado não pode ultrapassar o saldo mensal disponível do usuário.
+
+INV-M2-012
+Toda reserva deve terminar em `COMMITTED` ou `RELEASED`, de forma idempotente e transacional.
+
+TABELA DE RASTREABILIDADE
+
+Entrega: Execution Ledger
+ADR: ADR-002, ADR-008
+Invariantes: INV-M2-001, INV-M2-002, INV-M2-003, INV-M2-004
+Evidência em código:
+- `drizzle/schema.ts`
+- `drizzle/0006_behavior_action_execution.sql`
+- `drizzle/0007_behavior_action_retry_policy.sql`
+- `server/db.ts`
+Testes:
+- `server/services/behavior/executionService.test.ts`
+Status antes desta rodada: Concluído parcialmente, sem suporte explícito a retry e sem política persistida de recuperação.
+Status atual: Implementado e ampliado com `recoverable`, `maxAttempts`, `nextRetryAt`, `lastRetryAt` e status `SENDING`.
+
+Entrega: ExecutionService
+ADR: ADR-008, ADR-018
+Invariantes: INV-M2-002, INV-M2-003, INV-M2-004, INV-M2-006, INV-M2-007
+Evidência em código:
+- `server/services/behavior/executionService.ts`
+- integração em `server/services/maturationEngine.ts`
+Testes:
+- `server/services/behavior/executionService.test.ts`
+Status antes desta rodada: Implementado apenas para primeira execução e ACK lógico.
+Status atual: Implementado com suporte a execução inicial e reexecução de ledger persistido.
+
+Entrega: ActionExecutedEvent
+ADR: ADR-006
+Invariantes: INV-M2-008
+Evidência em código:
+- `server/services/behavior/dispatcher.ts`
+- `server/services/behavior/logger.ts`
+Testes:
+- coberto indiretamente por `executionService.test.ts`
+Status antes desta rodada: Implementado de forma inicial.
+Status atual: Mantido e ampliado para refletir o ciclo `SENDING`, `ACKED`, `FAILED` e `RETRYING`.
+
+Entrega: Control Center Ledger
+ADR: ADR-010
+Invariantes: INV-M2-009
+Evidência em código:
+- `server/services/controlCenterService.ts`
+- `client/src/pages/ControlCenter.tsx`
+Testes:
+- sem teste dedicado nesta rodada
+Status antes desta rodada: Mostrava ledger recente de execução básica.
+Status atual: Mantido; continua compatível com o ledger ampliado de retry.
+
+Entrega: RetryService
+ADR: ADR-005, ADR-007
+Invariantes: INV-M2-005, INV-M2-006, INV-M2-007, INV-M2-010
+Evidência em código:
+- `server/services/behavior/retryService.ts`
+- `server/services/behavior/executionService.ts`
+- `server/db.ts`
+Testes:
+- `server/services/behavior/retryService.test.ts`
+- `server/services/behavior/executionService.test.ts`
+Status antes desta rodada: Não iniciado.
+Status atual: Implementado.
+
+Entrega: Budget Reservation transacional
+ADR: ADR-002
+Invariantes: INV-M2-004, INV-M2-011, INV-M2-012
+Evidência em código:
+- `drizzle/schema.ts`
+- `drizzle/0008_behavior_budget_reservations.sql`
+- `server/services/behavior/budgetReservationService.ts`
+- integração em `server/services/behavior/executionService.ts`
+Testes:
+- `server/services/behavior/budgetReservationService.test.ts`
+- `server/services/behavior/executionService.test.ts`
+Status antes desta rodada: Preparado semanticamente, sem transação dedicada.
+Status atual: Implementado com reservation ledger, `reserve`, `commit`, `release` e integração no fluxo de execução.
+
+Entrega: Validação integrada da Fase 1
+ADR: ADR-010
+Invariantes: INV-M2-010
+Evidência em código:
+- `tests/integration/m2-fase1-e2e.test.ts`
+Testes:
+- `tests/integration/m2-fase1-e2e.test.ts`
+Status antes desta rodada: Não iniciado.
+Status atual: Implementado como teste integrado operacional do núcleo da Fase 1.
+
+RESUMO DE STATUS DO MARCO 2
+
+Componente: Execution Ledger
+Status: ✅ Concluído
+
+Componente: ExecutionService
+Status: ✅ Concluído
+
+Componente: Integração com maturação
+Status: ✅ Concluída
+
+Componente: Observabilidade inicial
+Status: ✅ Concluída
+
+Componente: RetryService
+Status: ✅ Concluído nesta rodada
+
+Componente: Política de retry
+Status: ✅ Concluída nesta rodada
+
+Componente: Incremento de attempt
+Status: ✅ Concluído nesta rodada
+
+Componente: Budget Reservation transacional
+Status: ✅ Concluído nesta rodada
+
+Componente: Validação integrada da Fase 1
+Status: ✅ Concluída nesta rodada
+
+Componente: Fase 1 pronta para tag
+Status: ✅ Sim
+
+Componente: Gateway desacoplado
+Status: 🟡 Preparado
+
+Componente: Inbound Handler
+Status: ⚪ Não iniciado
+
+Componente: Event Store
+Status: ⚪ Não iniciado
+
+Componente: Recovery completo
+Status: ⚪ Não iniciado
+
+VALIDAÇÃO DESTA RODADA
+- `pnpm test` -> 70/70 testes passando
+- `pnpm build` -> OK
+
+VEREDITO
+Esta matriz confirma que o projeto consolidou o núcleo da execução e concluiu a validação integrada da Fase 1: `Policy -> Execution -> Retry -> Budget -> Ledger`, com evidência automatizada. O próximo passo correto passa a ser o fechamento formal da Fase 1 e então a abertura da Fase 2 com `Gateway Interface`.

@@ -1,0 +1,262 @@
+DIFF COMPLETO DO BLOCO B — BUDGET RESERVATION TRANSACIONAL
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-20
+
+OBJETIVO DA RODADA
+Executar o próximo bloco útil do Marco 2 com escopo fechado:
+- formalizar o ciclo de vida do budget
+- criar um reservation ledger próprio
+- integrar reserve / commit / release ao `ExecutionService`
+- atualizar a matriz de rastreabilidade com o novo estado real do projeto
+
+ESCOPO EXECUTADO
+- `BudgetReservationService`
+- tabela `behavior_budget_reservations`
+- migration de budget reservation
+- integração do budget no `ExecutionService`
+- testes do serviço e da integração
+- atualização da matriz do Marco 2
+
+O QUE NÃO FOI FEITO NESTA RODADA
+- teste E2E ponta a ponta
+- gateway desacoplado
+- inbound handler
+- event store
+- recovery
+
+VALIDAÇÃO FINAL
+- `pnpm test` -> `69/69` testes passando
+- `23` arquivos de teste
+- `pnpm build` -> `OK`
+
+ARQUIVOS NOVOS
+
+1. `drizzle/0008_behavior_budget_reservations.sql`
+O que foi criado:
+- migration da nova tabela `behavior_budget_reservations`
+
+Campos principais:
+- `id`
+- `executionId`
+- `attempt`
+- `userId`
+- `amount`
+- `status`
+- `reason`
+- `createdAt`
+- `committedAt`
+- `releasedAt`
+- `updatedAt`
+
+Regras importantes:
+- chave lógica única por `executionId + attempt`
+- índice por `userId + status + createdAt`
+
+Efeito prático:
+- o budget deixou de ser apenas um estado dentro da execução
+- agora existe um ledger específico de reserva
+
+2. `server/services/behavior/budgetReservationService.ts`
+O que foi criado:
+- `calculateBudgetAvailability(...)`
+- `canReserveBudget(...)`
+- `reserveBudgetForExecution(...)`
+- `commitBudgetReservation(...)`
+- `releaseBudgetReservation(...)`
+- `getReservedBudgetAmount(...)`
+
+Como o serviço funciona:
+- usa `user_subscriptions.currentMessagesThisMonth` como consumo efetivo comprometido
+- calcula reservas ativas em `behavior_budget_reservations`
+- impede reservar acima de `plan.maxMessagesPerMonth`
+- reserva dentro de transação
+- commit incrementa o uso mensal efetivo
+- release libera a reserva sem consumir o contador mensal
+
+Decisão arquitetural importante:
+- o saldo disponível não é mutado na reserva
+- a reserva vive no ledger e o `available` é calculado como:
+  `limit - committed - reserved`
+
+Isso evita poluir o contador mensal com reservas ainda não confirmadas.
+
+Efeito prático:
+- o bloco de budget ficou coerente com a arquitetura e com a necessidade de retry
+
+3. `server/services/behavior/budgetReservationService.test.ts`
+O que foi criado:
+- testes puros para o serviço de budget
+
+Casos cobertos:
+- cálculo de disponibilidade
+- proteção contra saldo negativo
+- validação de capacidade de reserva
+
+Efeito prático:
+- o núcleo matemático do budget ficou verificável
+
+ARQUIVOS ALTERADOS
+
+4. `drizzle/schema.ts`
+O que mudou:
+- adicionei a tabela `behavior_budget_reservations`
+- adicionei os tipos inferidos:
+  - `BehaviorBudgetReservation`
+  - `InsertBehaviorBudgetReservation`
+
+Efeito prático:
+- o schema agora distingue:
+  - ledger de execução
+  - ledger de budget
+
+5. `server/services/behavior/executionService.ts`
+O que mudou:
+- o `ExecutionService` passou a depender de:
+  - `reserveBudgetForExecution`
+  - `commitBudgetReservation`
+  - `releaseBudgetReservation`
+- essas dependências também foram expostas para injeção em teste
+
+Nova ordem do fluxo:
+1. registrar execução
+2. reservar budget
+3. marcar `RESERVED`
+4. marcar `SENDING`
+5. enviar mensagem
+6. `commit` do budget em sucesso
+7. `release` do budget em falha
+
+Mudanças de comportamento:
+- falha de budget impede envio
+- falha de budget não gera retry automático
+- em falha de envio com budget reservado:
+  - release do budget
+  - execução vai para `FAILED`
+- em sucesso:
+  - commit do budget
+  - execução vai para `ACKED`
+
+Efeito prático:
+- a máquina da execução agora conversa de verdade com a máquina do budget
+
+6. `server/services/behavior/executionService.test.ts`
+O que mudou:
+- ajustei a suíte para injetar:
+  - `reserveBudget`
+  - `commitBudget`
+  - `releaseBudget`
+- os testes agora validam:
+  - reserva em sucesso
+  - commit em sucesso
+  - release em falha
+  - sequência de transição do ledger
+
+Efeito prático:
+- o contrato executável do fluxo principal ficou mais próximo da arquitetura real
+
+7. `matriz-rastreabilidade-marco2.txt`
+O que mudou:
+- adicionei novos invariantes locais:
+  - `INV-M2-011`
+  - `INV-M2-012`
+- atualizei a linha de `Budget Reservation transacional`
+- atualizei o resumo de status do Marco 2
+- atualizei a validação desta rodada
+- atualizei o veredito final do documento
+
+Estado anterior:
+- Budget Reservation estava como “próximo incremento”
+
+Estado atual:
+- Budget Reservation passou a constar como implementado
+
+Efeito prático:
+- a matriz continua sendo documento vivo, não documentação esquecida
+
+MÁQUINA DE ESTADOS EFETIVA APÓS ESTA RODADA
+
+Budget:
+NOT_RESERVED
+  ↓
+RESERVED
+  ├── COMMITTED
+  └── RELEASED
+
+Execução + Budget:
+PENDING
+  ↓
+reserveBudget()
+  ↓
+RESERVED
+  ↓
+SENDING
+  ├── ACKED + COMMITTED
+  └── FAILED + RELEASED
+
+Em retry:
+FAILED
+  ↓
+RETRYING
+  ↓
+reserveBudget() de novo para o novo `attempt`
+  ↓
+SENDING
+
+DECISÕES TÉCNICAS IMPORTANTES
+
+1. Backing store do budget
+- usei `user_subscriptions.currentMessagesThisMonth` como consumo efetivo
+- usei `behavior_budget_reservations` como consumo reservado
+
+Motivo:
+- isso permite implementar reserva real sem redesenhar o billing inteiro
+
+2. Idempotência da reserva
+- a chave operacional do ledger é `executionId + attempt`
+
+Motivo:
+- retry seguro
+- scheduler duplicado não duplica reserva
+- cada tentativa tem uma reserva própria
+
+3. Commit só no sucesso
+- `currentMessagesThisMonth` só é incrementado no `commit`
+
+Motivo:
+- reserva não é consumo
+- só entrega confirmada avança o uso mensal
+
+4. Release não toca o consumo efetivo
+- `release` apenas encerra a reserva
+
+Motivo:
+- evita descontar duas vezes
+- mantém o ledger de budget semanticamente correto
+
+INVARIANTES QUE ESTA RODADA MATERIALIZA
+- `INV-M2-004`: execução segue máquina explícita de estados
+- `INV-M2-011`: budget reservado não ultrapassa o saldo mensal disponível
+- `INV-M2-012`: toda reserva termina em `COMMITTED` ou `RELEASED`
+
+GANHO ARQUITETURAL
+Antes:
+- havia `budgetState` no ledger de execução
+- mas não existia orçamento reservado de verdade
+
+Depois:
+- o estado de budget tem suporte persistido e transacional
+- execução e budget passaram a interagir corretamente
+
+Isso é importante porque o projeto sai de “semântica no enum” para “comportamento real no domínio”.
+
+LISTA CONSOLIDADA DOS ARQUIVOS IMPACTADOS
+- `drizzle/schema.ts`
+- `drizzle/0008_behavior_budget_reservations.sql`
+- `server/services/behavior/budgetReservationService.ts`
+- `server/services/behavior/budgetReservationService.test.ts`
+- `server/services/behavior/executionService.ts`
+- `server/services/behavior/executionService.test.ts`
+- `matriz-rastreabilidade-marco2.txt`
+
+VEREDITO
+Esta rodada fecha o Bloco B de forma coerente com a OCS 2.0: a execução agora não apenas falha e reenvia, mas também reserva, compromete e libera orçamento com um ledger específico. O próximo passo natural passa a ser o teste de integração ponta a ponta do fluxo `Policy -> Execution -> Ledger -> Retry -> Budget -> Painel`.

@@ -1,0 +1,34 @@
+{
+  "datasetId": "synthetic-so-observa",
+  "description": "Passividade com leitura e observação.",
+  "replayedAt": "2026-07-16T18:00:00.000Z",
+  "rawEvents": [
+    {
+      "eventType": "messages_read",
+      "source": "messages.upsert",
+      "direction": "inbound",
+      "occurredAt": "2026-07-16T09:10:00.000Z",
+      "remoteJid": "5511999999999@s.whatsapp.net",
+      "remoteType": "contact",
+      "remoteLabel": "Contato Sintético"
+    },
+    {
+      "eventType": "status_viewed",
+      "source": "synthetic_system",
+      "direction": "system",
+      "occurredAt": "2026-07-16T09:20:00.000Z",
+      "remoteJid": "5511999999999@s.whatsapp.net",
+      "remoteType": "contact",
+      "remoteLabel": "Contato Sintético"
+    },
+    {
+      "eventType": "profile_name_updated",
+      "source": "synthetic_system",
+      "direction": "system",
+      "occurredAt": "2026-07-16T09:30:00.000Z",
+      "remoteJid": null,
+      "remoteType": null,
+      "remoteLabel": "Contato Sintético"
+    }
+  ]
+}

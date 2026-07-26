@@ -1,0 +1,224 @@
+PACOTE OPERACIONAL — SEMANA 1 A 3
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-21
+
+RESUMO
+
+Foi materializado o pacote operacional que estava pendente após a validação do D2, D3.1 e D3.2:
+
+1. health checks operacionais
+2. Dockerfile e compose de operação
+3. Prometheus + regras de alerta
+4. Alertmanager
+5. Grafana com datasource e dashboards
+6. workflow de CI
+7. runbook operacional
+
+VALIDAÇÃO REALIZADA
+
+No clone validado com `npm`:
+
+- `npm install` -> OK
+- `npx tsc --noEmit` -> OK
+- `npm test` -> `162` passando, `2` pulados
+- `npm run build` -> OK
+
+Validações extras:
+
+- dashboards Grafana -> JSON válido
+- `auditoria.py` -> compilação Python OK
+
+ARQUIVOS NOVOS
+
+## App / runtime
+
+- `Dockerfile`
+- `.dockerignore`
+
+## Compose / monitoramento
+
+- `docker-compose.operations.yml`
+- `monitoring/prometheus/prometheus.yml`
+- `monitoring/prometheus/rules/whatsapp-chip-maturator.yml`
+- `monitoring/alertmanager/alertmanager.yml`
+
+## Grafana
+
+- `grafana/provisioning/datasources/prometheus.yml`
+- `grafana/provisioning/dashboards/dashboards.yml`
+- `grafana/dashboards/queue-dashboard.json`
+- `grafana/dashboards/worker-dashboard.json`
+- `grafana/dashboards/pipeline-dashboard.json`
+- `grafana/dashboards/scheduler-dashboard.json`
+- `grafana/dashboards/dlq-dashboard.json`
+
+## CI / runbook
+
+- `.github/workflows/ci.yml`
+- `docs/runbooks/operational-observability.md`
+
+ARQUIVOS ALTERADOS
+
+- `server/_core/index.ts`
+
+O QUE FOI IMPLEMENTADO
+
+## 1. Health checks
+
+Arquivo:
+- `server/_core/index.ts`
+
+Endpoints:
+- `/live`
+- `/ready`
+- `/health`
+
+Comportamento:
+- `/live` responde prontidão básica do processo
+- `/ready` continua usando `observationRuntime.checkReady()`
+- `/health` agrega o status de runtime em payload operacional
+
+## 2. Dockerfile
+
+Arquivo:
+- `Dockerfile`
+
+Estratégia:
+- build em estágio separado
+- runtime com Node 22 Alpine
+- `npm run start`
+
+Objetivo:
+- permitir que a app participe da stack operacional via compose
+
+## 3. Compose operacional
+
+Arquivo:
+- `docker-compose.operations.yml`
+
+Serviços definidos:
+- `app`
+- `redis`
+- `prometheus`
+- `alertmanager`
+- `grafana`
+
+Objetivo:
+- subir uma stack local completa de observabilidade e operação
+
+## 4. Prometheus
+
+Arquivos:
+- `monitoring/prometheus/prometheus.yml`
+- `monitoring/prometheus/rules/whatsapp-chip-maturator.yml`
+
+Scrapes:
+- app `/internal/metrics`
+- prometheus
+- alertmanager
+
+Alertas implementados:
+- `WorkerStopped`
+- `QueueGrowing`
+- `DlqHasJobs`
+- `PipelineFailureRateHigh`
+- `SchedulerStopped`
+
+## 5. Alertmanager
+
+Arquivo:
+- `monitoring/alertmanager/alertmanager.yml`
+
+Configuração:
+- receiver inicial `blackhole`
+
+Objetivo:
+- permitir wiring de alertas já na stack, sem bloquear por integração externa
+
+## 6. Grafana
+
+Provisionamento:
+- datasource Prometheus automático
+- provider automático de dashboards
+
+Dashboards criados:
+- Queue
+- Worker
+- Pipeline
+- Scheduler
+- DLQ
+
+Objetivo:
+- fornecer a primeira camada operacional visual sem configuração manual
+
+## 7. Workflow de CI
+
+Arquivo:
+- `.github/workflows/ci.yml`
+
+Pipeline:
+- checkout
+- setup Node 22
+- `npm install`
+- `npx tsc --noEmit`
+- `npm test`
+- `npm run build`
+- `python -m py_compile auditoria.py`
+
+Objetivo:
+- transformar a validação já usada localmente em verificação automática
+
+## 8. Runbook operacional
+
+Arquivo:
+- `docs/runbooks/operational-observability.md`
+
+Conteúdo:
+- URLs dos serviços
+- subida da stack
+- validação inicial
+- leitura dos alertas
+- incidentes comuns
+- uso do auditor da Sprint 0
+
+VALOR PRÁTICO DESTA RODADA
+
+Depois desta entrega, o projeto passa a ter:
+
+- checks operacionais padrão
+- stack de observabilidade pronta para subir
+- alertas base definidos
+- dashboards provisionados
+- CI automatizando typecheck/test/build
+- runbook para operação e troubleshooting
+
+O QUE AINDA DEPENDE DE INFRA REAL
+
+Mesmo com o pacote criado, continuam dependendo do ambiente:
+
+- subida real de `docker compose`
+- scraping real do Prometheus contra a app rodando
+- alertas reais em execução
+- Grafana renderizando dashboards com dados vivos
+
+Esses itens não foram executados aqui porque o ambiente atual não expõe Docker operacional para validação fim a fim.
+
+VEREDITO
+
+O pacote operacional da Semana 1 a 3 ficou implementado no repositório e validado no que é possível sem Docker vivo:
+
+- código do app -> OK
+- CI -> criado
+- stack de observabilidade -> criada
+- dashboards -> válidos
+- runbook -> criado
+
+PRÓXIMO PASSO NATURAL
+
+Quando quiser, a próxima etapa operacional é:
+
+1. subir `docker compose -f docker-compose.operations.yml up --build`
+2. validar `/live`, `/ready`, `/health`
+3. validar `/internal/metrics`
+4. abrir Grafana e conferir os cinco dashboards
+5. validar firing dos alertas com cenários controlados

@@ -1,0 +1,171 @@
+{
+  "dispatch": {
+    "suave": {
+      "number": {
+        "cooldownMinutes": 30,
+        "maxPerHour": 1,
+        "maxPerDay": 4
+      },
+      "group": {
+        "cooldownMinutes": 45,
+        "maxPerHour": 1,
+        "maxPerDay": 3
+      }
+    },
+    "normal": {
+      "number": {
+        "cooldownMinutes": 20,
+        "maxPerHour": 2,
+        "maxPerDay": 6
+      },
+      "group": {
+        "cooldownMinutes": 35,
+        "maxPerHour": 1,
+        "maxPerDay": 4
+      }
+    },
+    "ultra": {
+      "number": {
+        "cooldownMinutes": 12,
+        "maxPerHour": 3,
+        "maxPerDay": 10
+      },
+      "group": {
+        "cooldownMinutes": 25,
+        "maxPerHour": 2,
+        "maxPerDay": 6
+      }
+    }
+  },
+  "maturation": {
+    "suave": {
+      "number": {
+        "cooldownMinutes": 45,
+        "maxPerHour": 2,
+        "maxPerDay": 8
+      },
+      "group": {
+        "cooldownMinutes": 60,
+        "maxPerHour": 1,
+        "maxPerDay": 5
+      }
+    },
+    "normal": {
+      "number": {
+        "cooldownMinutes": 30,
+        "maxPerHour": 3,
+        "maxPerDay": 12
+      },
+      "group": {
+        "cooldownMinutes": 45,
+        "maxPerHour": 2,
+        "maxPerDay": 8
+      }
+    },
+    "ultra": {
+      "number": {
+        "cooldownMinutes": 20,
+        "maxPerHour": 4,
+        "maxPerDay": 18
+      },
+      "group": {
+        "cooldownMinutes": 30,
+        "maxPerHour": 3,
+        "maxPerDay": 12
+      }
+    },
+    "policy": {
+      "version": "2026.07.20",
+      "thresholds": {
+        "attentionRiskScore": 55,
+        "blockRiskScore": 80
+      },
+      "cooldown": {
+        "defaultMinutes": 90,
+        "afterOutboundMinutes": 120
+      },
+      "jitter": {
+        "minReplyDelaySeconds": 90,
+        "maxReplyDelaySeconds": 1080,
+        "interActionDelayMinSeconds": 50,
+        "interActionDelayMaxSeconds": 480,
+        "sessionTimeVarianceHours": 2,
+        "sleepWindowStartHour": 0,
+        "sleepWindowEndHour": 7
+      },
+      "dailyBudgetCosts": {
+        "read_messages": 1,
+        "observe_profile": 1,
+        "view_status": 1,
+        "status_view": 1,
+        "group_read": 1,
+        "group_observe": 2,
+        "reaction": 2,
+        "reply": 6,
+        "message_sent": 8,
+        "initiate_dm": 10,
+        "group_interact": 6,
+        "profile_update": 4,
+        "join_group": 7,
+        "do_nothing": 0
+      },
+      "trustScoreBands": {
+        "birth": {
+          "trustMin": 0,
+          "trustMax": 20,
+          "fallbackAgeDaysStart": 0,
+          "fallbackAgeDaysEnd": 3,
+          "maxDailyBudget": 18,
+          "minReciprocityRatio": 2,
+          "requireInboundFirst": true,
+          "sessionCountRange": [1, 1],
+          "allowedActions": ["read_messages", "observe_profile", "view_status", "status_view", "do_nothing"]
+        },
+        "reactive": {
+          "trustMin": 21,
+          "trustMax": 40,
+          "fallbackAgeDaysStart": 4,
+          "fallbackAgeDaysEnd": 7,
+          "maxDailyBudget": 30,
+          "minReciprocityRatio": 1.5,
+          "requireInboundFirst": true,
+          "sessionCountRange": [1, 2],
+          "allowedActions": ["read_messages", "view_status", "status_view", "reply", "reaction", "group_read", "do_nothing"]
+        },
+        "interactive": {
+          "trustMin": 41,
+          "trustMax": 60,
+          "fallbackAgeDaysStart": 8,
+          "fallbackAgeDaysEnd": 14,
+          "maxDailyBudget": 48,
+          "minReciprocityRatio": 1.2,
+          "requireInboundFirst": false,
+          "sessionCountRange": [1, 2],
+          "allowedActions": ["read_messages", "view_status", "status_view", "reply", "reaction", "group_read", "group_observe", "profile_update", "message_sent", "do_nothing"]
+        },
+        "active": {
+          "trustMin": 61,
+          "trustMax": 80,
+          "fallbackAgeDaysStart": 15,
+          "fallbackAgeDaysEnd": 30,
+          "maxDailyBudget": 72,
+          "minReciprocityRatio": 0.9,
+          "requireInboundFirst": false,
+          "sessionCountRange": [2, 3],
+          "allowedActions": ["read_messages", "view_status", "status_view", "reply", "reaction", "group_read", "group_observe", "group_interact", "profile_update", "message_sent", "initiate_dm", "do_nothing"]
+        },
+        "mature": {
+          "trustMin": 81,
+          "trustMax": 100,
+          "fallbackAgeDaysStart": 31,
+          "fallbackAgeDaysEnd": 3650,
+          "maxDailyBudget": 96,
+          "minReciprocityRatio": 0.75,
+          "requireInboundFirst": false,
+          "sessionCountRange": [2, 4],
+          "allowedActions": ["read_messages", "view_status", "status_view", "reply", "reaction", "group_read", "group_observe", "group_interact", "profile_update", "message_sent", "initiate_dm", "join_group", "do_nothing"]
+        }
+      }
+    }
+  }
+}

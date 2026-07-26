@@ -1,0 +1,140 @@
+AUDITORIA E ENCERRAMENTO — DIFF CONSOLIDADO
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-22
+
+1. Objetivo
+
+Concluir a etapa pós-E2 com:
+
+- organização documental adicional
+- status rápido do projeto
+- release readme
+- estrutura de docs por índice
+- auditoria técnica completa do repositório
+
+2. Arquivos criados
+
+[Status e release]
+- `PROJECT_STATUS.md`
+- `README_RELEASE.md`
+
+[Estrutura docs]
+- `docs/README.md`
+- `docs/certification/README.md`
+- `docs/release/README.md`
+- `docs/roadmap/README.md`
+
+[Auditoria]
+- `AUDITORIA_COMPLETA_RELATORIO.md`
+- `AUDITORIA_E_ENCERRAMENTO_DIFF.txt`
+
+3. PROJECT_STATUS
+
+Foi criado um arquivo curto para leitura imediata:
+
+- Estado: Operacional
+- Versão: `v1.0.0-operational`
+- Sprint: E2 encerrada
+- Modo: Operação contínua
+- Próxima Sprint: Disparador
+
+4. README_RELEASE
+
+Foi criado um guia curto apontando:
+
+- como subir
+- onde estão os documentos
+- onde está a baseline
+- onde está a certificação
+- onde está o snapshot da release
+
+5. Estrutura docs
+
+Embora o projeto já tenha uma árvore documental rica em `docs/`, faltava uma camada simples de navegação para o momento atual.
+
+Foram criados índices:
+
+- `docs/README.md`
+- `docs/certification/README.md`
+- `docs/release/README.md`
+- `docs/roadmap/README.md`
+
+Leitura:
+- a reorganização foi iniciada sem quebrar caminhos antigos
+- ainda não houve migração destrutiva dos arquivos-raiz
+
+6. Auditoria executada
+
+O relatório completo está em:
+- `AUDITORIA_COMPLETA_RELATORIO.md`
+
+Achados principais:
+
+6.1) Confirmado
+- `client/src/pages/Home.tsx`
+- `validate-fluxos.sh`
+- `coleta-evidencias.sh`
+- diffs intermediários antigos da E2
+- `aceite-operacional-d2.txt`
+
+6.2) Suspeito
+- `client/src/pages/ComponentShowcase.tsx`
+- `client/src/components/AIChatBox.tsx`
+- `client/src/components/Map.tsx`
+- `client/src/components/ManusDialog.tsx`
+- `client/src/components/DashboardLayout.tsx`
+- `coleta-evidencias.ps1`
+- `validar-alertas.ps1`
+
+6.3) Precisa rastreamento
+- diretórios `auth_info_*`
+- dependências suspeitas
+- uso real de componentes amarelos via auditoria automática e rastreamento
+
+6.4) Itens que devem ser mantidos
+- `docs/adr/`
+- `docs/architecture/`
+- `docs/core/`
+- `docs/operations/`
+- `E2_CERTIFICATION_REPORT.md`
+- `BASELINE_FREEZE_v1.0.0-operational.md`
+- `FINAL_CHECKLIST.md`
+- `ROADMAP.md`
+- `PROJECT_STATUS.md`
+- `release/v1.0.0-operational/`
+
+7. Leitura técnica final
+
+O projeto está operacional.
+O próximo trabalho correto não é nova feature.
+
+A sequência recomendada agora é:
+
+Sprint E2
+→ Baseline congelada
+→ Auditoria completa
+→ Limpeza do projeto
+→ Tag `v1.0.0-operational`
+→ Operação contínua
+→ Arquitetura do Disparador
+
+Metodologia correta antes da limpeza amarela:
+
+- `depcheck`
+- `ts-prune`
+- `knip`
+- rastreamento de imports e consumo real
+
+8. Conclusão
+
+Esta rodada deixou o repositório melhor preparado para a faxina real:
+
+- documentação mais navegável
+- status do projeto explícito
+- release legível
+- auditoria rastreável com classificação por risco
+
+Próximo passo ideal:
+- executar uma rodada de limpeza controlada dos itens `🟢 Confirmado`
+- reorganizar scripts por categoria
+- depois auditar `🟡 Suspeito` e `🔍 Precisa rastreamento` com ferramenta e rastreamento real

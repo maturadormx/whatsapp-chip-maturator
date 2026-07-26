@@ -1,0 +1,198 @@
+DIFF COMPLETO — SPRINT A (M9 + M10 + M11)
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-20
+
+OBJETIVO DA RODADA
+Entregar três capacidades operacionais reais em um bloco curto e coerente:
+
+1. M9 — observabilidade estruturada
+2. M10 — decisão automática via regra simples
+3. M11 — histórico mínimo via Event Store tipado
+
+VALIDAÇÃO FINAL
+- `pnpm test` -> `139/139` testes passando
+- `pnpm build` -> `OK`
+
+CAPACIDADES ENTREGUES
+
+M9 — Observabilidade
+- `LoggerPort`
+- `DevLogger`
+- eventos de log padronizados do pipeline
+
+M10 — Inteligência
+- `RuleEnginePort`
+- `DefaultRuleEngine`
+- `CriticalAlertRule`
+- `ExecutionPlan` agora contém ações reais
+
+M11 — Histórico
+- `EventStorePort`
+- `MemoryEventStore`
+- gravação de eventos tipados:
+  - `ObservationSaved`
+  - `FactGenerated`
+
+ARQUIVOS NOVOS
+
+Ports:
+- `server/ports/LoggerPort.ts`
+- `server/ports/RuleEnginePort.ts`
+- `server/ports/EventStorePort.ts`
+
+Logging:
+- `server/infrastructure/logging/logEvents.ts`
+- `server/infrastructure/logging/DevLogger.ts`
+- `server/infrastructure/logging/DevLogger.test.ts`
+
+Rule engine:
+- `server/rules/CriticalAlertRule.ts`
+- `server/rules/DefaultRuleEngine.ts`
+- `server/rules/DefaultRuleEngine.test.ts`
+
+Event store:
+- `server/infrastructure/event-store/MemoryEventStore.ts`
+- `server/infrastructure/event-store/MemoryEventStore.test.ts`
+
+Documentação:
+- `docs/architecture/sprint-a-m9-m11.md`
+
+ARQUIVOS ALTERADOS
+
+- `server/domain/executionPlan.ts`
+- `server/domain/executionPlanFactory.ts`
+- `server/ports/ExecutionServicePort.ts`
+- `server/application/execution/DefaultExecutionService.ts`
+- `server/application/execution/DefaultExecutionService.test.ts`
+- `server/application/observation/ObservationPipeline.ts`
+- `server/application/observation/ObservationPipeline.test.ts`
+- `docs/architecture/contracts.md`
+- `docs/architecture/m2-traceability.md`
+
+MUDANÇAS PRINCIPAIS
+
+1. Logger estruturado
+
+Antes:
+- `ObservationPipeline` ainda tinha `console.log` implícito como fallback
+
+Depois:
+- `LoggerPort` foi introduzido
+- `DevLogger` implementa:
+  - `debug`
+  - `info`
+  - `warn`
+  - `error`
+- o pipeline agora emite eventos estruturados, como:
+  - `pipeline.started`
+  - `observation.saved`
+  - `fact.generated`
+  - `rule.evaluated`
+  - `plan.created`
+  - `plan.executed`
+  - `pipeline.completed`
+
+2. RuleEngine mínimo
+
+Antes:
+- `ExecutionPlan` era sempre um plano vazio / neutro
+
+Depois:
+- `RuleEnginePort.evaluate(fact)` retorna `ExecutionAction[]`
+- `DefaultRuleEngine` usa uma lista de regras
+- `CriticalAlertRule` adiciona uma ação:
+  - `alert`
+  quando `fact.data.severity === "critical"`
+
+3. ExecutionPlan com ações reais
+
+Antes:
+- `ExecutionPlan` tinha:
+  - `action: "noop"`
+
+Depois:
+- `ExecutionPlan` passa a ter:
+  - `actions: ExecutionAction[]`
+- `ExecutionPlanFactory.fromFact(fact, actions)` cria plano com ações concretas
+
+4. Event Store tipado
+
+Antes:
+- não havia histórico mínimo do pipeline interno
+
+Depois:
+- `EventStorePort.append(stream, event)`
+- `EventStorePort.get(stream)`
+- `MemoryEventStore` como implementação inicial
+- o pipeline grava envelopes tipados, não objetos crus
+
+Eventos gravados:
+- stream `observation`:
+  - `ObservationSaved`
+- stream `fact`:
+  - `FactGenerated`
+
+ORDEM FINAL DO PIPELINE
+
+```text
+Observation
+→ logger.debug(pipeline.started)
+→ repository.save(observation)
+→ logger.info(observation.saved)
+→ eventStore.append("observation", ObservationSaved)
+→ FactFactory.create(observation)
+→ logger.info(fact.generated)
+→ eventStore.append("fact", FactGenerated)
+→ ruleEngine.evaluate(fact)
+→ logger.debug(rule.evaluated)
+→ ExecutionPlanFactory.fromFact(fact, actions)
+→ logger.debug(plan.created)
+→ executionService.execute(plan)
+→ logger.info(plan.executed)
+→ logger.debug(pipeline.completed)
+```
+
+TESTES NOVOS E AJUSTADOS
+
+Novos:
+- `DevLogger.test.ts`
+- `DefaultRuleEngine.test.ts`
+- `MemoryEventStore.test.ts`
+
+Ajustados:
+- `DefaultExecutionService.test.ts`
+- `ObservationPipeline.test.ts`
+
+O que os testes validam agora:
+- logger chama `console.debug/info` corretamente
+- regra crítica gera ação `alert`
+- event store grava e lê por stream
+- pipeline respeita a ordem:
+  - save
+  - append observation
+  - create fact
+  - append fact
+  - evaluate rules
+  - execute plan
+- pipeline produz plano com ações
+- pipeline produz plano vazio quando nenhuma regra dispara
+
+EVOLUÇÃO DA SUÍTE
+
+Antes:
+- `134/134`
+
+Depois:
+- `139/139`
+
+O QUE O SISTEMA FAZ HOJE QUE NÃO FAZIA ONTEM
+
+- consegue ser observado por logs estruturados
+- consegue tomar uma decisão automática simples (`alert`) com base em `Fact`
+- consegue reconstruir o histórico mínimo de `Observation` e `Fact` a partir do `EventStore`
+
+VEREDITO
+Sprint A concluído e verde. O pipeline deixou de ser apenas uma sequência técnica e passou a entregar três capacidades operacionais concretas: observabilidade, decisão automática e histórico tipado. O próximo passo natural é Sprint B:
+
+1. M12 — Scheduler
+2. M13 — Retry

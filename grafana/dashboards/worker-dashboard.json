@@ -1,0 +1,48 @@
+{
+  "id": null,
+  "uid": "worker-dashboard",
+  "title": "Worker",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 2,
+  "refresh": "10s",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Worker running",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 6 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [{ "expr": "worker_running", "refId": "A" }]
+    },
+    {
+      "type": "timeseries",
+      "title": "Processamento por minuto",
+      "gridPos": { "x": 6, "y": 0, "w": 18, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        { "expr": "rate(worker_jobs_processed_total[1m]) * 60", "legendFormat": "processed/min", "refId": "A" },
+        { "expr": "rate(worker_jobs_failed_total[1m]) * 60", "legendFormat": "failed/min", "refId": "B" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Totais do worker",
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        { "expr": "worker_jobs_processed_total", "legendFormat": "processed total", "refId": "A" },
+        { "expr": "worker_jobs_failed_total", "legendFormat": "failed total", "refId": "B" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Duração de lote",
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        { "expr": "histogram_quantile(0.50, sum(rate(worker_batch_processing_seconds_bucket[5m])) by (le))", "legendFormat": "p50", "refId": "A" },
+        { "expr": "histogram_quantile(0.95, sum(rate(worker_batch_processing_seconds_bucket[5m])) by (le))", "legendFormat": "p95", "refId": "B" }
+      ]
+    }
+  ]
+}

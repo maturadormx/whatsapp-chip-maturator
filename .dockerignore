@@ -1,0 +1,14 @@
+node_modules
+dist
+.git
+.github
+.pnpm-store
+npm-debug.log
+docker-compose*.yml
+grafana
+monitoring
+templates
+auth_info_4
+*.local
+*.log
+.env

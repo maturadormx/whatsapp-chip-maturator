@@ -1,0 +1,49 @@
+{
+  "datasetId": "chip-natural",
+  "description": "Comportamento natural com conversa bidirecional, leitura, status e perfil.",
+  "replayedAt": "2026-07-17T12:00:00.000Z",
+  "rawEvents": [
+    {
+      "eventType": "message_received",
+      "source": "messages.upsert",
+      "direction": "inbound",
+      "occurredAt": "2026-07-16T13:00:00.000Z",
+      "remoteJid": "5511999999999@s.whatsapp.net",
+      "remoteType": "contact",
+      "remoteLabel": "Contato A"
+    },
+    {
+      "eventType": "message_sent",
+      "source": "maturation_flow",
+      "direction": "outbound",
+      "occurredAt": "2026-07-16T13:04:00.000Z",
+      "remoteJid": "5511999999999@s.whatsapp.net",
+      "remoteType": "contact",
+      "remoteLabel": "Contato A"
+    },
+    {
+      "eventType": "messages_read",
+      "source": "messages.upsert",
+      "direction": "inbound",
+      "occurredAt": "2026-07-16T13:05:00.000Z",
+      "remoteJid": "5511999999999@s.whatsapp.net",
+      "remoteType": "contact",
+      "remoteLabel": "Contato A"
+    },
+    {
+      "eventType": "status_viewed",
+      "source": "human_observation",
+      "direction": "system",
+      "occurredAt": "2026-07-16T18:00:00.000Z",
+      "remoteJid": "5511888888888@s.whatsapp.net",
+      "remoteType": "contact",
+      "remoteLabel": "Contato B"
+    },
+    {
+      "eventType": "profile_name_updated",
+      "source": "human_profile",
+      "direction": "system",
+      "occurredAt": "2026-07-16T20:10:00.000Z"
+    }
+  ]
+}

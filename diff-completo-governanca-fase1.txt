@@ -1,0 +1,224 @@
+DIFF COMPLETO — GOVERNANÇA E FECHAMENTO FORMAL DA FASE 1
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-20
+
+OBJETIVO DA RODADA
+Executar os itens normativos pedidos para o fechamento formal da Fase 1:
+
+- governança do Marco 2 / Fase 1
+- invariantes arquiteturais
+- máquina de estados documentada
+- definition of done
+- processo de release e política de baseline
+- changelog e release notes
+- manutenção da evidência técnica com testes e build
+
+ENQUADRAMENTO
+Esta rodada não abriu a Fase 2 nem adicionou novo domínio funcional. Ela consolida o gate documental e de release da Fase 1, mantendo o alinhamento entre:
+
+- implementação
+- validação
+- baseline
+- liberação formal da próxima fase
+
+VALIDAÇÃO FINAL
+- `pnpm test` -> `70/70` testes passando
+- `24` arquivos de teste
+- `pnpm build` -> `OK`
+
+ARQUIVOS NOVOS
+
+1. `docs/governance/m2-phase1-governance.md`
+O que foi criado:
+- documento normativo do gate de encerramento da Fase 1
+
+Conteúdo principal:
+- finalidade da governança
+- sequência obrigatória:
+  - PR de validação
+  - review
+  - merge
+  - CI verde
+  - DoD
+  - tag
+  - baseline
+  - liberação da Fase 2
+- o que o PR de validação pode conter
+- política de congelamento dos componentes do núcleo
+- situação atual do projeto
+
+Efeito prático:
+- o fechamento da Fase 1 deixa de ser apenas um acordo implícito
+
+2. `docs/governance/architecture-validation.md`
+O que foi criado:
+- guia da validação arquitetural da Fase 1
+
+Conteúdo principal:
+- fluxo validado
+- cenários obrigatórios
+- invariantes que o teste precisa provar
+- evidências atuais no projeto
+
+Efeito prático:
+- a validação integrada agora tem um contrato textual explícito
+
+3. `docs/governance/baseline-policy.md`
+O que foi criado:
+- política da baseline `m2-fase-1`
+
+Conteúdo principal:
+- o que a tag representa
+- regras para criação da tag
+- política de rollback
+- componentes congelados após a baseline
+- exceções permitidas
+
+Efeito prático:
+- o repositório passou a ter regra clara sobre o que a baseline significa
+
+4. `docs/architecture/invariants.md`
+O que foi criado:
+- inventário de invariantes arquiteturais reais da Fase 1
+
+Organização:
+- invariantes de execução
+- invariantes de budget
+- invariantes de retry
+- invariantes da integração da Fase 1
+
+Exemplos registrados:
+- `executionId` imutável
+- `executionId + attempt` único
+- budget nunca negativo
+- reserva termina em `COMMITTED` ou `RELEASED`
+- retry só em `FAILED` recuperável
+
+Efeito prático:
+- o projeto agora tem um ponto único para ler os invariantes do núcleo operacional
+
+5. `docs/architecture/state-machine.md`
+O que foi criado:
+- máquina de estados da execução da Fase 1
+
+Conteúdo principal:
+- fluxo:
+  - `PENDING`
+  - `RESERVED`
+  - `SENDING`
+  - `ACKED` / `FAILED`
+  - `RETRYING`
+- regras de transição
+- estados terminais da fase
+- observação de escopo: sem gateway/inbound reais
+
+Efeito prático:
+- a semântica operacional deixou de estar espalhada entre testes e código
+
+6. `docs/architecture/definition-of-done.md`
+O que foi criado:
+- DoD formal da Fase 1
+
+Blocos cobertos:
+- código
+- integração
+- arquitetura
+- release
+
+Efeito prático:
+- existe agora critério explícito para dizer “a fase acabou”
+
+7. `docs/governance/release-process.md`
+O que foi criado:
+- processo de release da Fase 1
+
+Conteúdo principal:
+- sequência oficial do gate
+- comando da tag
+- regra de ouro: a tag precisa apontar para um estado reproduzível
+- resultado esperado após a tag
+
+Efeito prático:
+- o projeto passou a documentar não só o que precisa existir, mas como o encerramento deve acontecer
+
+8. `CHANGELOG.md`
+O que foi criado:
+- changelog resumido da baseline `m2-fase-1`
+
+Conteúdo principal:
+- `Execution Ledger`
+- `ExecutionService`
+- `RetryService`
+- `BudgetReservationService`
+- evidência operacional no painel
+- validação integrada
+
+Efeito prático:
+- existe agora histórico de release legível e curto
+
+9. `RELEASE-NOTES.md`
+O que foi criado:
+- release notes da Fase 1
+
+Conteúdo principal:
+- o que a baseline representa
+- o que ainda não faz parte da baseline
+- qual é a próxima fase
+
+Efeito prático:
+- o projeto ganha um documento claro para comunicação da release
+
+O QUE FOI PRESERVADO DE PROPÓSITO
+
+Não foi feito:
+- criação de `git tag` real
+- abertura da Fase 2
+- implementação de `MessageGateway`
+- `MockGateway`
+- `Clock`
+- `Inbound`
+
+Motivo:
+- a tag real deve apontar para um commit reproduzível
+- neste ambiente existem mudanças ainda não formalizadas como merge/CI de baseline
+- criar tag agora seria tecnicamente enganoso
+
+Portanto, o que ficou pronto foi:
+- toda a documentação e o processo para a tag
+- o estado “pronto para tag”
+
+GANHO DE GOVERNANÇA
+Antes:
+- a fase estava tecnicamente validada
+- mas o processo formal ainda estava distribuído entre conversa, matriz e artefatos soltos
+
+Depois:
+- existe um pacote normativo completo dentro do repositório
+- existe DoD
+- existe processo de release
+- existe política de baseline
+- existe changelog
+- existe release notes
+- existe documento principal de governança da fase
+
+GANHO ARQUITETURAL
+Esta rodada não muda o domínio, mas reduz risco arquitetural de forma relevante porque:
+
+- documenta invariantes
+- congela a semântica do núcleo
+- define a máquina de estados como baseline
+- evita começar a Fase 2 sem critério formal
+
+LISTA CONSOLIDADA DOS ARQUIVOS IMPACTADOS
+- `docs/governance/m2-phase1-governance.md`
+- `docs/governance/architecture-validation.md`
+- `docs/governance/baseline-policy.md`
+- `docs/governance/release-process.md`
+- `docs/architecture/invariants.md`
+- `docs/architecture/state-machine.md`
+- `docs/architecture/definition-of-done.md`
+- `CHANGELOG.md`
+- `RELEASE-NOTES.md`
+
+VEREDITO
+Esta rodada conclui a parte normativa do fechamento da Fase 1. O repositório agora tem não só o núcleo operacional implementado e validado, mas também o pacote de governança necessário para congelar a baseline `m2-fase-1` de forma disciplinada. O próximo passo correto continua sendo o fechamento formal por merge/CI/tag e, só depois disso, a abertura da Fase 2.

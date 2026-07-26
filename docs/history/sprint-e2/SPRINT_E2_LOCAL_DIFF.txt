@@ -1,0 +1,142 @@
+SPRINT E2 — CONSOLIDAÇÃO E CERTIFICAÇÃO LOCAL
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-22
+
+1. Reenquadramento da fase
+- A E2 foi reposicionada de "produção validada" para "certificação local reprodutível".
+- A validação remota de GitHub/GHCR/deploy ficou explicitamente fora do escopo desta rodada.
+
+2. Arquivos criados / ajustados
+
+[Certificação local]
+- `E2_LOCAL_CERTIFICATION.md`
+- `scripts/validate-reproducibility.ps1`
+- `scripts/validate-fluxos.ps1`
+- `scripts/validate-chaos.ps1`
+- `scripts/validate-disposable.ps1`
+- `scripts/migrate-local.ps1`
+
+[Correções de runtime]
+- `docker-compose.operations.yml`
+- `docker-compose.prod.yml`
+- `Dockerfile`
+- `package.json`
+
+[Documentação]
+- `SPRINT_E2_BASELINE.md`
+- `SPRINT_E2_DIFF.txt`
+
+3. Evidência importante descoberta
+
+Durante a rodada apareceu um problema real ao tentar ligar migrações automáticas no startup:
+
+- o container entrava em loop de restart
+- a cadeia `db:push` com `drizzle-kit generate && migrate` não é apropriada para bootstrap repetível
+- o journal de migração em `drizzle/meta/_journal.json` estava atrasado em relação aos SQLs presentes
+
+Diagnóstico operacional:
+- usar `RUN_MIGRATIONS_ON_START=true` neste estágio introduz instabilidade desnecessária na certificação local
+- a migração deve ser explícita, não automática
+
+4. Correções aplicadas
+
+4.1) Migração fora do startup
+- removido `RUN_MIGRATIONS_ON_START` dos compose files
+- `Dockerfile` voltou a subir com `npm run start`
+- criado `scripts/migrate-local.ps1` para execução manual/ explícita
+
+4.2) db:push corrigido
+- `package.json`
+  - `db:push` passou a usar:
+    - `drizzle-kit --config drizzle.config.ts generate`
+    - `drizzle-kit --config drizzle.config.ts migrate`
+
+4.3) Runner preparado
+- `Dockerfile` copia:
+  - `drizzle/`
+  - `drizzle.config.ts`
+
+5. Bateria local entregue
+
+E2.1 — Reprodutibilidade
+- `scripts/validate-reproducibility.ps1`
+- valida:
+  - `docker compose down -v`
+  - `docker compose up -d --build`
+  - `/health`
+  - `/ready`
+  - `/live`
+  - `/internal/metrics`
+  - `redis-cli ping`
+  - Prometheus ready
+  - Grafana health
+
+E2.2 — Matriz de fluxos
+- `scripts/validate-fluxos.ps1`
+- valida:
+  - evento válido
+  - incremento de métricas
+  - restart da app
+  - restart do Redis
+  - restart do MySQL
+
+E2.4 — Chaos controlado
+- `scripts/validate-chaos.ps1`
+- valida:
+  - stop/start da app
+  - alertas após indisponibilidade
+  - stop/start do MySQL
+  - recuperação posterior
+
+E2.5 — Ambiente descartável
+- `scripts/validate-disposable.ps1`
+- valida:
+  - reconstrução do zero
+  - retorno de `/ready`
+  - exposição de métricas
+
+6. Validação executada nesta rodada
+
+Executado com sucesso:
+- `npm run check`
+- `scripts/validate-reproducibility.ps1`
+- `scripts/validate-chaos.ps1`
+
+Resultado:
+- `npm run check`: verde
+- `E2.1 reprodutibilidade`: verde
+- `E2.4 chaos controlado`: executado e registrou evidência
+
+Observação:
+- `E2.2` foi criada e ajustada para PowerShell, mas a rodada revelou primeiro o problema estrutural das migrações no startup. Após a correção, ela ficou pronta para a próxima execução com a stack estável.
+
+7. Leitura de maturidade após esta rodada
+
+Área | Estado
+- Arquitetura | ✅ validada
+- Backend | ✅ validado
+- Pipeline | ✅ validado
+- Observabilidade | ✅ validada
+- Operação local | ✅ validada
+- Reprodutibilidade local | ✅ validada
+- Chaos controlado | ✅ parcialmente exercitado
+- Migração automática no startup | ❌ removida por inadequação nesta fase
+- Migração explícita local | ✅ preparada
+- GitHub Actions | 🟡 implementado, não validado
+- Deploy remoto | 🟡 modelado, não validado
+
+8. Conclusão
+
+A E2 agora reflete corretamente o estado real do projeto:
+- certificação local avançada
+- automação remota preparada, porém não comprovada
+
+O sistema está mais honesto e mais estável do que antes, porque a rodada removeu um mecanismo de bootstrap que estava introduzindo restart loop.
+
+9. Próximo passo recomendado
+
+Seguir nesta ordem:
+1. rerodar `scripts/validate-fluxos.ps1` com a stack já corrigida
+2. rodar `scripts/validate-disposable.ps1`
+3. consolidar `E2.1 → E2.6` como certificação local completa
+4. só depois abrir `E3 — Integração GitHub`

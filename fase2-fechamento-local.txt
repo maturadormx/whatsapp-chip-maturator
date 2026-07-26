@@ -1,0 +1,54 @@
+FECHAMENTO LOCAL DA FASE 2
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-20
+
+OBJETIVO
+Consolidar o encerramento local da Fase 2 após a conclusão dos quatro commits do MessageGateway.
+
+ESCOPO DA FASE 2
+
+Commit 1
+- contratos do gateway
+
+Commit 2
+- injeção no `ExecutionService`
+
+Commit 3
+- fake e testes
+
+Commit 4
+- ADR, rastreabilidade e documentação
+
+ESTADO FINAL
+
+| Item | Status |
+|---|---|
+| Contratos do gateway | ✅ |
+| Injeção no `ExecutionService` | ✅ |
+| Fake determinístico | ✅ |
+| Testes unitários | ✅ |
+| Testes de integração | ✅ |
+| ADR | ✅ |
+| Rastreabilidade | ✅ |
+| Documentação da fase | ✅ |
+
+VALIDAÇÃO
+- `pnpm test` -> `105/105`
+- `pnpm build` -> `OK`
+
+OBSERVAÇÃO IMPORTANTE
+O Git continua indisponível neste ambiente de execução. Portanto:
+
+- a tag local `m2-fase-2` não foi criada aqui
+- a baseline da fase está pronta para ser registrada no Git local do usuário
+
+COMANDO ESPERADO NO GIT LOCAL
+
+```bash
+git add .
+git commit -m "feat(m2-fase2): MessageGateway abstraído, testado e documentado"
+git tag -a m2-fase-2 -m "Fase 2: MessageGateway abstraído, testado e documentado."
+```
+
+CONCLUSÃO
+A Fase 2 está concluída localmente em termos de código, testes e documentação. O próximo passo correto é registrar a baseline `m2-fase-2` no Git local e só então abrir o próximo marco arquitetural.

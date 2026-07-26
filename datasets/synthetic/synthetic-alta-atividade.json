@@ -1,0 +1,72 @@
+{
+  "datasetId": "synthetic-alta-atividade",
+  "description": "Múltiplas ações ao longo do dia.",
+  "replayedAt": "2026-07-16T23:00:00.000Z",
+  "rawEvents": [
+    {
+      "eventType": "session_connected",
+      "source": "synthetic_system",
+      "direction": "system",
+      "occurredAt": "2026-07-16T07:00:00.000Z",
+      "remoteJid": null,
+      "remoteType": null,
+      "remoteLabel": "Contato Sintético"
+    },
+    {
+      "eventType": "message_received",
+      "source": "messages.upsert",
+      "direction": "inbound",
+      "occurredAt": "2026-07-16T08:10:00.000Z",
+      "remoteJid": "5511999999999@s.whatsapp.net",
+      "remoteType": "contact",
+      "remoteLabel": "Contato Sintético"
+    },
+    {
+      "eventType": "message_sent",
+      "source": "synthetic_outbound",
+      "direction": "outbound",
+      "occurredAt": "2026-07-16T08:12:00.000Z",
+      "remoteJid": "5511999999999@s.whatsapp.net",
+      "remoteType": "contact",
+      "remoteLabel": "Contato Sintético"
+    },
+    {
+      "eventType": "group_opened",
+      "source": "synthetic_system",
+      "direction": "system",
+      "occurredAt": "2026-07-16T11:00:00.000Z",
+      "remoteJid": null,
+      "remoteType": "group",
+      "remoteLabel": "Contato Sintético",
+      "groupJid": "120363000000101@g.us",
+      "groupSubject": "Grupo Alta Atividade"
+    },
+    {
+      "eventType": "status_viewed",
+      "source": "synthetic_system",
+      "direction": "system",
+      "occurredAt": "2026-07-16T14:20:00.000Z",
+      "remoteJid": "5511999999999@s.whatsapp.net",
+      "remoteType": "contact",
+      "remoteLabel": "Contato Sintético"
+    },
+    {
+      "eventType": "message_received",
+      "source": "messages.upsert",
+      "direction": "inbound",
+      "occurredAt": "2026-07-16T18:05:00.000Z",
+      "remoteJid": "5511888888888@s.whatsapp.net",
+      "remoteType": "contact",
+      "remoteLabel": "Contato 2"
+    },
+    {
+      "eventType": "message_sent",
+      "source": "synthetic_outbound",
+      "direction": "outbound",
+      "occurredAt": "2026-07-16T18:09:00.000Z",
+      "remoteJid": "5511888888888@s.whatsapp.net",
+      "remoteType": "contact",
+      "remoteLabel": "Contato 2"
+    }
+  ]
+}

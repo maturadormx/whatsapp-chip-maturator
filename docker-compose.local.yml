@@ -1,0 +1,22 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: whatsapp-chip-maturator-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root_pass_local
+      MYSQL_DATABASE: whatsapp_chip_maturator
+      MYSQL_USER: chip_user
+      MYSQL_PASSWORD: chip_pass
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_local_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot_pass_local"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  mysql_local_data:

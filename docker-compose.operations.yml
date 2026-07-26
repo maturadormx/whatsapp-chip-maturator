@@ -1,0 +1,102 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: whatsapp-chip-maturator-app
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      TELEMETRY_ENABLED: "true"
+      OAUTH_SERVER_URL: http://oauth-placeholder.local
+      JWT_SECRET: local-dev-secret
+      VITE_OAUTH_PORTAL_URL: http://portal-placeholder.local
+      VITE_APP_ID: local-app
+      OBSERVATION_RUNTIME_DRIVER: mysql
+      DATABASE_URL: mysql://chip_user:chip_pass@mysql:3306/whatsapp_chip_maturator
+      REDIS_URL: redis://redis:6379
+      OBSERVATION_SCHEDULER_INTERVAL_MS: "30000"
+      OBSERVATION_SCHEDULER_BATCH_SIZE: "5"
+      OBSERVATION_QUEUE_ATTEMPTS: "2"
+      OBSERVATION_QUEUE_BACKOFF_MS: "500"
+      OBSERVATION_QUEUE_ENABLED: "true"
+      OBSERVATION_SCHEDULER_ENABLED: "true"
+    ports:
+      - "3000:3000"
+    depends_on:
+      - mysql
+      - redis
+    restart: unless-stopped
+
+  mysql:
+    image: mysql:8.4
+    container_name: whatsapp-chip-maturator-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root_pass_local
+      MYSQL_DATABASE: whatsapp_chip_maturator
+      MYSQL_USER: chip_user
+      MYSQL_PASSWORD: chip_pass
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_local_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot_pass_local"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    container_name: whatsapp-chip-maturator-redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.55.0
+    container_name: whatsapp-chip-maturator-prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/rules:/etc/prometheus/rules:ro
+    ports:
+      - "9090:9090"
+    depends_on:
+      - app
+      - alertmanager
+    restart: unless-stopped
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: whatsapp-chip-maturator-alertmanager
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+    volumes:
+      - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    ports:
+      - "9093:9093"
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: whatsapp-chip-maturator-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3002:3000"
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+volumes:
+  mysql_local_data:

@@ -1,0 +1,110 @@
+RELATÓRIO — PNPM VS NPM NA MATERIALIZAÇÃO
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-21
+
+OBJETIVO
+Descobrir se a falha de materialização de módulos é:
+
+1. um problema geral do ambiente/Node/Windows
+2. ou um problema específico do `pnpm`
+
+COLETA DE AMBIENTE
+
+- `node -v` => `v22.16.0`
+- `npm -v` => `10.9.4`
+- `pnpm -v` => `10.18.0`
+- `pnpm config get node-linker` => `undefined`
+- `pnpm config get shell-emulator` => `undefined`
+- `PATHEXT` => `.COM;.EXE;.BAT;.CMD;.VBS;.VBE;.JS;.JSE;.WSF;.WSH;.MSC;.CPL`
+
+ACHADOS NO PROJETO COM PNPM
+
+1. `pnpm list` encontra `zod` e `drizzle-orm`
+2. `node_modules` contém várias entradas como `Junction`
+3. `node_modules\\zod\\package.json` e `node_modules\\drizzle-orm\\package.json` não existem de forma utilizável
+4. `require.resolve('zod/package.json')` falha
+5. `require.resolve('drizzle-orm')` também falha no projeto instalado com `pnpm`
+
+INTERPRETAÇÃO
+
+O lock e o grafo estão OK, mas a materialização final do `node_modules` não está utilizável para o Node.
+
+TESTE MÍNIMO COM NPM
+
+Diretório:
+- `npm-materialization-test`
+
+Dependências instaladas:
+- `zod`
+- `drizzle-orm`
+
+Resultado:
+- `zod exists` => `true`
+- `drizzle exists` => `true`
+- `require.resolve('zod', { paths: [base] })` => OK
+- `require.resolve('drizzle-orm', { paths: [base] })` => OK
+
+Observação:
+- `require.resolve('drizzle-orm/package.json')` NÃO é teste válido de ausência, porque o pacote expõe `exports` e bloqueia esse subpath.
+
+INTERPRETAÇÃO
+
+Esse teste mostra que:
+
+- o Node está funcional
+- o ambiente Windows consegue materializar módulos de forma válida
+- o problema NÃO é geral do Node/Windows
+- o problema é específico do fluxo atual com `pnpm`
+
+TESTE COM PNPM + HOISTED
+
+Diretório:
+- `pnpm-hoisted-test`
+
+Configuração:
+- `.npmrc` com `node-linker=hoisted`
+
+Resultado:
+- falha com `EBUSY` ao tentar criar symlink para o diretório do projeto no store
+- o comando acabou sendo executado via Corepack `pnpm 11.14.0` porque o teste mínimo não tinha `packageManager`
+
+Erro observado:
+- `EBUSY: resource busy or locked, symlink ...`
+
+INTERPRETAÇÃO
+
+O teste com `pnpm` continua apontando para problema de linking/materialização no ambiente atual.
+
+CONCLUSÃO
+
+O diagnóstico agora está mais forte:
+
+1. o problema NÃO é do D2
+2. o problema NÃO é do `tsconfig`
+3. o problema NÃO é do Node em geral
+4. o problema está no fluxo de materialização do `pnpm` neste ambiente/sessão
+
+DETALHE IMPORTANTE
+
+No projeto principal, `package.json` já fixa:
+- `"packageManager": "pnpm@10.18.0"`
+
+Então o comportamento via Corepack `pnpm 11` apareceu no teste mínimo sem esse campo, e NÃO explica sozinho a falha do projeto principal.
+
+VEREDITO
+
+Neste momento:
+
+- `npm` materializa corretamente em teste mínimo
+- `pnpm` continua sendo o principal suspeito para a quebra de `node_modules`
+
+PRÓXIMO PASSO MAIS SEGURO
+
+Se a meta for destravar a validação sem voltar ao D2 ainda, o próximo experimento útil é:
+
+1. usar um clone limpo do projeto
+2. materializar com `npm install`
+3. validar `require.resolve`
+4. só então rodar `tsc`
+
+Isso não significa migrar o projeto permanentemente para `npm`; significa apenas isolar o gargalo para continuar a investigação com base concreta.

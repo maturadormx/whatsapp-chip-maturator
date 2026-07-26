@@ -1,0 +1,139 @@
+DIFF COMPLETO — FASE 2 / COMMIT 3 / TESTES DO CONTRATO E INTEGRAÇÃO DO GATEWAY
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-20
+
+OBJETIVO DA RODADA
+Executar o `Commit 3` da Fase 2:
+
+- criar um fake determinístico de gateway
+- validar o contrato do `MessageGateway` isoladamente
+- validar a integração `ExecutionService -> MessageGateway`
+- manter a base verde sem depender de implementação concreta
+
+RESULTADO FINAL
+- o `FakeMessageGateway` foi criado
+- a suíte unitária do contrato do gateway foi criada
+- a suíte de integração dedicada da Fase 2 foi criada
+- a base completa continuou verde
+
+VALIDAÇÃO FINAL
+- `pnpm test` -> `105/105` testes passando
+- `pnpm build` -> `OK`
+
+ARQUIVOS NOVOS
+
+1. `tests/fakes/FakeMessageGateway.ts`
+O que foi criado:
+- fake determinístico de `MessageGateway`
+
+Capacidades:
+- resultado padrão `ACKED`
+- sobrescrita por `executionId`
+- rastreamento de mensagens enviadas
+- contagem de envios por `executionId`
+- reset do estado interno
+
+Por que isso importa:
+- não é mock acoplado ao framework
+- não depende de implementação concreta
+- serve tanto para testes unitários quanto de integração
+
+Efeito prático:
+- a Fase 2 agora tem uma implementação controlada do contrato do gateway
+
+2. `tests/unit/gateways/MessageGateway.test.ts`
+O que foi criado:
+- suíte unitária do contrato do gateway
+
+Casos cobertos:
+- retorna `ACKED` por padrão
+- permite configurar resultado por `executionId`
+- registra mensagens enviadas
+- conta envios duplicados
+- permite reset
+- inclui `attempt`
+- inclui `occurredAt`
+
+Efeito prático:
+- o contrato do gateway deixou de ser apenas tipagem estática
+- ele agora tem comportamento verificável
+
+3. `tests/integration/gateway-execution.test.ts`
+O que foi criado:
+- suíte de integração dedicada da Fase 2
+
+Importante:
+- esta suíte usa a API real existente do módulo:
+  - `executeBehaviorAction(...)`
+  - `retryBehaviorActionExecution(...)`
+- não foi criada classe `ExecutionService`
+- a integração foi feita sobre a superfície pública real do projeto atual
+
+Casos cobertos:
+1. delega envio ao gateway
+2. transita para `COMMITTED` quando o gateway retorna `ACKED`
+3. transita para `FAILED` quando o gateway retorna `FAILED`
+4. transita para `FAILED` quando o gateway retorna `TIMEOUT`
+5. preserva idempotência com o gateway fake
+
+Efeito prático:
+- o Commit 2 passou a ter prova dedicada
+- a Fase 2 já possui sua primeira suíte de integração própria
+
+O QUE FOI VALIDADO NA INTEGRAÇÃO
+
+Delegação
+- `ExecutionService` realmente envia via `gateway.send(...)`
+
+Sucesso
+- `ACKED` gera:
+  - `commitBudget`
+  - estado final `COMMITTED`
+
+Falha
+- `FAILED` gera:
+  - `releaseBudget`
+  - estado final `FAILED`
+
+Timeout
+- `TIMEOUT` gera:
+  - erro operacional
+  - estado final `FAILED`
+
+Idempotência
+- retry sobre execução já `ACKED` não provoca novo envio
+
+O QUE NÃO FOI ALTERADO DE PROPÓSITO
+- `ExecutionService`
+- `RetryService`
+- `BudgetReservationService`
+- `Ledger`
+- documentação da Fase 2
+
+Motivo:
+- esta rodada foi estritamente o `Commit 3`
+- testes e validação, sem abrir ainda o `Commit 4`
+
+GANHO ARQUITETURAL
+Antes:
+- o `MessageGateway` existia como contrato
+- o `ExecutionService` já estava injetado
+- mas ainda faltava uma suíte própria da Fase 2
+
+Depois:
+- existe fake controlado
+- existe contrato testado
+- existe integração dedicada
+
+Isso reduz o risco do próximo passo porque o gateway já está coberto em três níveis:
+- contrato
+- injeção
+- integração com o orquestrador
+
+LISTA CONSOLIDADA DOS ARQUIVOS IMPACTADOS
+- `tests/fakes/FakeMessageGateway.ts`
+- `tests/unit/gateways/MessageGateway.test.ts`
+- `tests/integration/gateway-execution.test.ts`
+
+VEREDITO
+Esta rodada conclui corretamente o `Commit 3` da Fase 2. A abstração do gateway agora não só existe e é injetada, como também está coberta por testes unitários e por integração dedicada com o `ExecutionService`. O próximo passo natural continua sendo o `Commit 4`: documentação da Fase 2, ADR da abstração e atualização da rastreabilidade.

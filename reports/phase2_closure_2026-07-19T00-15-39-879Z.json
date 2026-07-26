@@ -1,0 +1,36 @@
+{
+  "generated_at": "2026-07-19T00:15:39.879Z",
+  "phase2_summary_before_semantic_review": {
+    "replay_divergent": 0,
+    "projection_inconsistent": 0,
+    "snapshot_divergent": 2,
+    "streams_without_projection": 0,
+    "streams_without_official": 0,
+    "audited_chips": 10
+  },
+  "final_reconciliation": {
+    "scope": "fleet",
+    "reconciled_chips": 10,
+    "divergences_found": 0,
+    "chips_without_official_stream": [],
+    "streams_without_projection": [],
+    "projections_inconsistent_with_replay": [],
+    "legacy_official_divergences": [],
+    "streams_checked": 0,
+    "projections_checked": 0
+  },
+  "final_status": {
+    "sem_stream_oficial": 0,
+    "replay_divergente": 0,
+    "snapshot_divergente": 0,
+    "projecao_inconsistente": 0,
+    "reconciliados": 10,
+    "total_legado": 10,
+    "fase2_concluida": true
+  },
+  "semantic_policy_applied": {
+    "rule": "snapshot legado desconectado com phoneNumber persistente é compatível com estado oficial PAREADO",
+    "scope": "reconciliacao",
+    "core_changed": false
+  }
+}

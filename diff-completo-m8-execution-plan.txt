@@ -1,0 +1,133 @@
+DIFF COMPLETO — M8 EXECUTIONPLAN
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-20
+
+OBJETIVO DA RODADA
+Implementar o próximo elo mínimo do pipeline após M7:
+
+1. `Fact` passa a alimentar um `ExecutionService`
+2. `ExecutionService` devolve um `ExecutionPlan`
+3. ainda sem `RuleEngine`
+4. ainda sem `LoggerPort`
+5. ainda sem side-effects reais
+
+VALIDAÇÃO FINAL
+- `pnpm test` -> `134/134` testes passando
+- `pnpm build` -> `OK`
+
+ARQUIVOS NOVOS
+
+Domínio:
+- `server/domain/executionPlan.ts`
+- `server/domain/executionPlanFactory.ts`
+
+Porta:
+- `server/ports/ExecutionServicePort.ts`
+
+Aplicação:
+- `server/application/execution/DefaultExecutionService.ts`
+- `server/application/execution/DefaultExecutionService.test.ts`
+
+Documentação:
+- `docs/adr/0011-execution-plan-from-fact.md`
+
+ARQUIVOS ALTERADOS
+
+Pipeline:
+- `server/application/observation/ObservationPipeline.ts`
+- `server/application/observation/ObservationPipeline.test.ts`
+
+Documentação:
+- `docs/adr/README.md`
+- `docs/architecture/contracts.md`
+- `docs/architecture/m2-traceability.md`
+
+O QUE ENTROU
+
+1. `ExecutionPlan`
+- artefato intermediário do pipeline
+- representa intenção operacional derivada de `Fact`
+
+2. `ExecutionPlanFactory`
+- transforma `Fact` em `ExecutionPlan`
+- nesta rodada produz plano mínimo:
+  - `action: "noop"`
+
+3. `ExecutionServicePort`
+- contrato estável:
+  - `execute(fact): Promise<ExecutionPlan>`
+
+4. `DefaultExecutionService`
+- consome `Fact`
+- cria `ExecutionPlan`
+- expõe hook interno `onPlanCreated`
+- não executa side-effects reais
+
+INTEGRAÇÃO NO PIPELINE
+
+Antes:
+1. salvar `Observation`
+2. gerar `Fact`
+3. notificar `onFactGenerated`
+
+Depois:
+1. salvar `Observation`
+2. gerar `Fact`
+3. notificar `onFactGenerated`
+4. chamar `executionService.execute(fact)`
+
+GARANTIAS PRESERVADAS
+
+- `Observation` continua sendo persistida antes de tudo
+- `Fact` continua sendo derivado da `Observation`
+- HTTP continua sem conhecer `Fact` ou `ExecutionPlan`
+- `ExecutionService` entra apenas atrás da porta do pipeline
+
+TESTES NOVOS E AJUSTADOS
+
+1. `DefaultExecutionService.test.ts`
+- gera `ExecutionPlan` a partir de `Fact`
+- chama `onPlanCreated` depois da criação
+
+2. `ObservationPipeline.test.ts`
+- valida a ordem:
+  - `save(observation)`
+  - `createFact(observation)`
+  - `executionService.execute(fact)`
+- propaga falha do `ExecutionService`
+
+EVOLUÇÃO DA SUÍTE
+
+Antes:
+- `131/131`
+
+Depois:
+- `134/134`
+
+DECISÃO ARQUITETURAL REGISTRADA
+
+ADR:
+- `0011-execution-plan-from-fact.md`
+
+Resumo:
+- `Fact` não aciona diretamente regras ou efeitos
+- primeiro ele vira `ExecutionPlan`
+- isso mantém a separação entre:
+  - derivação de intenção
+  - decisão futura
+  - efeito futuro
+
+O QUE NÃO FOI FEITO DE PROPÓSITO
+
+- `RuleEngine`
+- `LoggerPort`
+- efeitos reais a partir do plano
+- integração com `ExecutionService` comportamental legado
+- persistência de `ExecutionPlan`
+
+Motivo:
+- a rodada foi mantida no menor incremento coerente com o backlog congelado
+- o objetivo era só materializar a fronteira `Fact -> ExecutionPlan`
+
+VEREDITO
+O pipeline agora possui um elo adicional claramente separado: `Observation -> Fact -> ExecutionPlan`. Isso prepara o sistema para introduzir `RuleEngine`, logging e execução real de planos sem contaminar o HTTP nem quebrar a disciplina da baseline 2.0.

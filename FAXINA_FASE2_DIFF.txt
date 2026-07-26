@@ -1,0 +1,192 @@
+FAXINA FASE 2 — ORGANIZAÇÃO DO REPOSITÓRIO
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-22
+
+1. Escopo
+
+Esta rodada executa somente organização:
+
+- reorganização de `scripts/` por categoria
+- criação de `docs/future/`
+- realocação da preparação de E3 para área de futuro
+- atualização de caminhos documentais e de scripts
+
+Sem mudança de lógica de negócio.
+Sem alteração arquitetural.
+Sem remoção de componentes suspeitos.
+
+2. Nova estrutura de scripts
+
+Criadas as categorias:
+
+- `scripts/certification/`
+- `scripts/operational/`
+- `scripts/maintenance/`
+- `scripts/backup/`
+- `scripts/release/`
+- `scripts/historical/`
+
+Também foram adicionados READMEs por categoria.
+
+3. Scripts movidos
+
+## certification
+
+- `certificacao-final.ps1`
+- `coleta-evidencias.ps1`
+- `migrate-local.ps1`
+- `start-certification-stack.ps1`
+- `validate-chaos.ps1`
+- `validate-disposable.ps1`
+- `validate-fluxos.ps1`
+- `validate-observability.ps1`
+- `validate-reproducibility.ps1`
+- `validar-alertas.ps1`
+
+## operational
+
+- `build.mjs`
+- `dev.mjs`
+- `start.mjs`
+- `test.mjs`
+
+## maintenance
+
+- `generate-synthetic-behavior-dataset.ts`
+- `run-behavior-replay.ts`
+- `validate-architecture-boundaries.ts`
+- `validate-architecture-fitness.ts`
+- `validate-behavior-sandbox.ts`
+- `validate-operational-calculation.ts`
+
+## backup
+
+- `backup-mysql.sh`
+- `restore-mysql.sh`
+
+## release
+
+- `rollback-production.sh`
+- `smoke-production.sh`
+- `tag-operational.ps1`
+
+4. Documentação reorganizada
+
+Criadas:
+
+- `docs/future/README.md`
+- `docs/future/e3/README.md`
+
+Movido:
+
+- `SPRINT_E2_BASELINE.md` → `docs/future/e3/SPRINT_E2_BASELINE.md`
+
+Atualização importante no documento:
+
+- o arquivo agora registra explicitamente:
+  - "Arquivos preparados, porém ainda não validados em ambiente GitHub Actions com secrets reais."
+
+Leitura correta:
+- E3 continua preparação
+- não é feature certificada
+- não é homologação de CI/CD
+
+5. Arquivos atualizados
+
+- `package.json`
+- `README.md`
+- `README_RELEASE.md`
+- `E2_LOCAL_CERTIFICATION.md`
+- `E2_CERTIFICATION_REPORT.md`
+- `BASELINE_FREEZE_v1.0.0-operational.md`
+
+Objetivo:
+- refletir os novos caminhos
+- preservar o comportamento esperado
+
+6. Ajustes de launcher
+
+Como os scripts operacionais saíram de `scripts/` para `scripts/operational/`, foi necessário ajustar o cálculo de `projectRoot` em:
+
+- `scripts/operational/build.mjs`
+- `scripts/operational/dev.mjs`
+- `scripts/operational/test.mjs`
+
+No `dev.mjs` também foi explicitado `cwd: projectRoot`.
+
+Isso não altera regra de negócio.
+Só preserva o mesmo contexto de execução após a reorganização.
+
+7. Validação
+
+## Testes
+
+Executado:
+- `npm test`
+
+Resultado:
+- **PASS**
+- `54` arquivos de teste aprovados
+- `162` testes aprovados
+- `2` skipped
+
+## Build
+
+Executado:
+- `npm run build`
+
+Resultado:
+- o build voltou ao mesmo incidente conhecido do ambiente Windows:
+  - `vite:esbuild-transpile`
+  - `Access is denied`
+  - lock em diretório temporário/cache do `esbuild`
+
+Leitura correta:
+- a reorganização inicialmente causou um erro de path (`index.html` não encontrado)
+- isso foi corrigido na própria rodada
+- após a correção, o build retornou ao padrão anterior do incidente já conhecido
+- portanto, **não há evidência de regressão funcional causada pela Fase 2**
+
+8. O que não foi feito
+
+Não foram alterados:
+
+- `ComponentShowcase`
+- `AIChatBox`
+- `Map`
+- `ManusDialog`
+- `DashboardLayout`
+- `auth_info_*`
+- dependências suspeitas do `package.json`
+- arquitetura do produto
+- layout
+- navegação
+- cores
+- telas
+
+9. Resultado da Fase 2
+
+Resultado:
+
+- repositório mais navegável
+- preparação de E3 colocada em área correta de futuro
+- scripts categorizados
+- documentação principal atualizada
+- baseline preservada
+
+10. Próximo passo recomendado
+
+Fase 3 — Auditoria automática:
+
+- `knip`
+- `depcheck`
+- `ts-prune`
+
+Só depois disso:
+
+- decidir sobre `ComponentShowcase`
+- `AIChatBox`
+- `Map`
+- `ManusDialog`
+- `DashboardLayout`
+- dependências suspeitas

@@ -1,0 +1,103 @@
+FAXINA FASE 1 — LIMPEZA SEGURA
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-22
+
+1. Escopo
+
+Esta rodada executa somente a Fase 1 de baixo risco:
+
+- remover item confirmado sem uso
+- arquivar scripts históricos já substituídos
+- arquivar diffs intermediários já superados
+- preservar rastreabilidade em `docs/history/`
+- não tocar em itens `Suspeito` ou `Precisa rastreamento`
+
+2. Itens tratados
+
+## Removido
+
+- `client/src/pages/Home.tsx`
+
+Motivo:
+- página de exemplo
+- não roteada em `client/src/App.tsx`
+- sem papel no produto operacional
+
+## Arquivado em `docs/history/`
+
+- `scripts/validate-fluxos.sh`
+- `scripts/coleta-evidencias.sh`
+- `SPRINT_E2_DIFF.txt`
+- `SPRINT_E2_LOCAL_DIFF.txt`
+- `SPRINT_E2_GATES_DIFF.txt`
+- `SPRINT_E2_FINAL_DIFF.txt`
+- `aceite-operacional-d2.txt`
+
+## Estrutura adicionada
+
+- `docs/history/README.md`
+- `docs/history/sprint-e2/`
+
+3. O que não foi tocado
+
+Itens propositalmente preservados:
+
+- `ComponentShowcase`
+- `AIChatBox`
+- `Map`
+- `ManusDialog`
+- `DashboardLayout`
+- `auth_info_*`
+- dependências do `package.json`
+- arquitetura
+- layout
+- sidebars
+- navegação
+- runtime operacional
+
+4. Validação após a limpeza
+
+## Testes
+
+Executado:
+- `npm test`
+
+Resultado:
+- **PASS**
+- `54` arquivos de teste aprovados
+- `162` testes aprovados
+- `2` testes skipped
+
+## Build
+
+Executado:
+- `npm run build`
+
+Resultado:
+- **sem regressão funcional detectada**
+- falha reproduzida no mesmo problema já conhecido do ambiente Windows:
+  - `esbuild ... Access is denied`
+  - lock em diretório temporário/cache
+
+Leitura correta:
+- a falha do build nesta rodada não aponta quebra causada pela faxina
+- ela reproduz o incidente operacional já conhecido do ambiente
+
+5. Estado final da Fase 1
+
+Resultado:
+
+- limpeza segura executada
+- baseline preservada
+- nenhuma remoção de risco médio/alto
+- histórico mantido em pasta própria
+- testes continuam verdes
+
+6. Próximo passo recomendado
+
+Fase 2 — Organização do repositório:
+
+- reorganizar scripts por categoria
+- consolidar documentação em `docs/`
+- mover históricos adicionais para `docs/history/`
+- reduzir peso da raiz sem mudar o produto

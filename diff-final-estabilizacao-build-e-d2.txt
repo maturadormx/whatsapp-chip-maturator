@@ -1,0 +1,205 @@
+DIFF FINAL — ESTABILIZAÇÃO DE BUILD E VALIDAÇÃO DO D2
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-21
+
+RESUMO
+
+Esta rodada não continuou a implementação do D2. O foco foi estabilizar a cadeia de validação após o diagnóstico conclusivo:
+
+- `pnpm` estava quebrando a materialização do `node_modules`
+- com `npm`, a resolução de módulos ficou íntegra
+- a partir disso, os erros remanescentes passaram a ser erros reais do projeto
+
+OBJETIVO DA RODADA
+
+1. validar o projeto inteiro em um clone com `npm`
+2. corrigir os erros reais de `tsc`
+3. manter o D2 congelado arquiteturalmente, mexendo apenas em correções estruturais e de tipagem
+4. fechar `tsc`, `test` e `build` verdes no ambiente funcional
+
+VALIDAÇÃO FINAL
+
+Ambiente validado:
+- clone com `npm` em diretório temporário limpo
+
+Resultados finais:
+- `require.resolve('zod')` -> `OK`
+- `require.resolve('drizzle-orm')` -> `OK`
+- `npx tsc --noEmit` -> `OK`
+- `npm test` -> `154` testes passando, `2` integrações opcionais puladas
+- `npm run build` -> `OK`
+
+ARQUIVOS ALTERADOS NO PROJETO
+
+Configuração:
+- `tsconfig.json`
+
+Bootstrap / runtime:
+- `server/_core/index.ts`
+
+Fila / D2:
+- `server/infrastructure/queue/BullMQAdapter.ts`
+
+Repositórios / utilitários:
+- `server/repositories/ledger/InMemoryBehaviorActionLedgerRepository.ts`
+- `server/repositories/observation/MemoryObservationRepository.ts`
+- `server/services/behavior/behaviorQueries.ts`
+
+Execution / planner / engine:
+- `server/services/behavior/executionService.ts`
+- `server/services/behaviorPlannerService.ts`
+- `server/services/maturationEngine.ts`
+
+Testes estabilizados:
+- `server/services/behavior/phase1OperationalIntegration.test.ts`
+- `tests/integration/m2-fase1-e2e.test.ts`
+
+O QUE FOI CORRIGIDO
+
+## 1. Configuração estrutural do TypeScript
+
+Arquivo:
+- `tsconfig.json`
+
+Mudanças:
+- `tsBuildInfoFile` saiu de `node_modules`
+- `target: ES2022`
+- `downlevelIteration: true`
+
+Motivo:
+- remover erro estrutural de escrita em `node_modules`
+- alinhar compilação com iteração moderna
+
+## 2. Bootstrap do servidor
+
+Arquivo:
+- `server/_core/index.ts`
+
+Mudança:
+- import de `ENV` adicionado
+
+Motivo:
+- corrigir `TS2304`
+
+## 3. Adapter BullMQ
+
+Arquivo:
+- `server/infrastructure/queue/BullMQAdapter.ts`
+
+Mudança:
+- fronteira tipada do adapter foi relaxada no boundary com a lib concreta
+
+Motivo:
+- remover incompatibilidades artificiais entre tipos internos e assinaturas concretas do `bullmq`
+- isso era ruído introduzido pela integração do D2, não erro de domínio
+
+## 4. TS2802 em iteradores
+
+Arquivos:
+- `server/repositories/ledger/InMemoryBehaviorActionLedgerRepository.ts`
+- `server/repositories/observation/MemoryObservationRepository.ts`
+- `server/services/behavior/behaviorQueries.ts`
+
+Mudança:
+- substituição de spreads/iterações por `Array.from(...)`
+
+Motivo:
+- remover o bloco residual de `TS2802` sem alterar comportamento
+
+## 5. Tipagem do ledger em executionService
+
+Arquivo:
+- `server/services/behavior/executionService.ts`
+
+Mudanças:
+- record inicial agora satisfaz `CreateBehaviorActionLedgerRecord`
+- `recoverable` inicial convertido para `1 | 0`
+- `parseExecutionPayload(execution.payload ?? null)`
+
+Motivo:
+- corrigir incompatibilidade entre tipo interno de execução e contrato persistido do ledger
+- remover `undefined` indevido no parse do payload
+
+## 6. Null safety em behaviorPlannerService
+
+Arquivo:
+- `server/services/behaviorPlannerService.ts`
+
+Mudança:
+- branch explícito para `policyDecision === null`
+
+Motivo:
+- remover `TS18047`
+- manter a decisão segura quando o contexto de política não estiver disponível
+
+## 7. Acesso inválido em maturationEngine
+
+Arquivo:
+- `server/services/maturationEngine.ts`
+
+Mudança:
+- remoção do acesso a `selectedTarget.snapshot.cooldownUntil`
+- passagem explícita de `null`
+
+Motivo:
+- o snapshot retornado por `getTargetOperationalSnapshot()` não expõe `cooldownUntil`
+
+## 8. Estabilização dos testes de retry
+
+Arquivos:
+- `server/services/behavior/phase1OperationalIntegration.test.ts`
+- `tests/integration/m2-fase1-e2e.test.ts`
+
+Mudança:
+- injeção de `clock` fixo no harness de testes
+
+Motivo:
+- os testes estavam dependentes do relógio real da máquina
+- isso fazia o retry não ficar elegível no momento esperado
+- a falha era flakiness temporal, não regressão do D2
+
+EFEITO DESSAS CORREÇÕES
+
+1. O problema de módulos deixou de contaminar a análise
+2. O `tsc` passou a refletir apenas erros reais
+3. Os erros estruturais e os ruídos introduzidos pela integração do D2 foram removidos
+4. Os testes de retry ficaram determinísticos
+
+RESULTADO FINAL DA VALIDAÇÃO
+
+No clone validado com `npm`:
+
+- `tsc` -> verde
+- `test` -> verde
+- `build` -> verde
+
+INTERPRETAÇÃO ARQUITETURAL
+
+O D2 não foi a causa do colapso inicial.
+
+O que aconteceu foi:
+
+1. `pnpm` quebrou a materialização de módulos neste ambiente
+2. isso mascarou o verdadeiro estado da base
+3. com `npm`, a base ficou analisável
+4. as correções restantes eram de compilação/estabilização, não de arquitetura da fila
+
+VEREDITO
+
+O projeto ficou validado no ambiente funcional (`npm` clone), com `tsc`, testes e build verdes.
+
+Isso permite concluir com segurança:
+
+- a integração estrutural do D2 está consistente
+- os bloqueios restantes não eram do D2
+- a cadeia de validação agora está estável no ambiente alternativo
+
+PRÓXIMO PASSO NATURAL
+
+Separar o trabalho em duas trilhas:
+
+1. operação/infra:
+   - investigar por que o `pnpm` quebra a materialização neste ambiente
+
+2. produto/arquitetura:
+   - retomar a conclusão funcional do D2/DLQ/métricas sem o ruído do ambiente

@@ -1,0 +1,173 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: whatsapp-chip-maturator:prod
+    container_name: whatsapp-chip-maturator-app-prod
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      TELEMETRY_ENABLED: "true"
+      OBSERVATION_RUNTIME_DRIVER: mysql
+      OBSERVATION_QUEUE_ENABLED: "true"
+      OBSERVATION_SCHEDULER_ENABLED: "true"
+      DISTRIBUTED_RUNTIME_ENABLED: ${DISTRIBUTED_RUNTIME_ENABLED:-true}
+      CLUSTER_NODE_ID: ${CLUSTER_NODE_ID:-prod-node-1}
+      CLUSTER_NODE_ROLE: ${CLUSTER_NODE_ROLE:-worker}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:3000:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:3000/health >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+    restart: unless-stopped
+    logging: *default-logging
+
+  mysql:
+    image: mysql:8.4
+    container_name: whatsapp-chip-maturator-mysql-prod
+    env_file:
+      - .env.production
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_pass_prod}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-whatsapp_chip_maturator}
+      MYSQL_USER: ${MYSQL_USER:-chip_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-chip_pass}
+    command:
+      - "--default-authentication-plugin=mysql_native_password"
+      - "--innodb-buffer-pool-size=512M"
+      - "--max-connections=300"
+      - "--binlog-expire-logs-seconds=604800"
+    ports:
+      - "127.0.0.1:3307:3306"
+    volumes:
+      - mysql_prod_data:/var/lib/mysql
+      - ./backups:/backups
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+    logging: *default-logging
+
+  redis:
+    image: redis:7-alpine
+    container_name: whatsapp-chip-maturator-redis-prod
+    command:
+      - "redis-server"
+      - "--appendonly"
+      - "yes"
+      - "--save"
+      - "60"
+      - "1000"
+      - "--maxmemory-policy"
+      - "allkeys-lru"
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis_prod_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+    restart: unless-stopped
+    logging: *default-logging
+
+  caddy:
+    image: caddy:2.8-alpine
+    container_name: whatsapp-chip-maturator-caddy-prod
+    depends_on:
+      app:
+        condition: service_healthy
+    env_file:
+      - .env.production
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+    logging: *default-logging
+
+  prometheus:
+    image: prom/prometheus:v2.55.0
+    container_name: whatsapp-chip-maturator-prometheus-prod
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/rules:/etc/prometheus/rules:ro
+      - prometheus_prod_data:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+    depends_on:
+      - app
+      - alertmanager
+    restart: unless-stopped
+    logging: *default-logging
+    profiles: ["ops"]
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: whatsapp-chip-maturator-alertmanager-prod
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+    volumes:
+      - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    ports:
+      - "127.0.0.1:9093:9093"
+    restart: unless-stopped
+    logging: *default-logging
+    profiles: ["ops"]
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: whatsapp-chip-maturator-grafana-prod
+    env_file:
+      - .env.production
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-change-me}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-https://grafana.example.com}
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_prod_data:/var/lib/grafana
+    ports:
+      - "127.0.0.1:3002:3000"
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    logging: *default-logging
+    profiles: ["ops"]
+
+volumes:
+  mysql_prod_data:
+  redis_prod_data:
+  caddy_data:
+  caddy_config:
+  prometheus_prod_data:
+  grafana_prod_data:

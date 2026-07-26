@@ -1,0 +1,394 @@
+.admin-page {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.05) 0%, transparent 42%),
+    radial-gradient(circle at 80% 0%, rgba(56, 189, 248, 0.035) 0%, transparent 32%),
+    #020617;
+}
+
+.admin-page .admin-shell {
+  width: 100%;
+  max-width: 1360px;
+  margin: 0 auto;
+}
+
+.admin-page .admin-overview-kpi-grid,
+.admin-page .admin-overview-main-grid,
+.admin-page .admin-overview-secondary-grid,
+.admin-page .admin-users-main-grid,
+.admin-page .admin-company-top-grid,
+.admin-page .admin-company-main-grid,
+.admin-page .admin-plans-top-grid,
+.admin-page .admin-plan-card-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+.admin-page .admin-kpi-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 108px;
+  padding: 1rem 1.125rem;
+}
+
+.admin-page .admin-kpi-leading {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.admin-page .admin-kpi-icon {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  flex-shrink: 0;
+}
+
+.admin-page .admin-kpi-copy {
+  min-width: 0;
+}
+
+.admin-page .admin-kpi-label {
+  color: #94a3b8;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  margin-bottom: 0.35rem;
+}
+
+.admin-page .admin-kpi-value {
+  color: #ffffff;
+  font-size: 1.9rem;
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.admin-page .admin-kpi-trend {
+  white-space: nowrap;
+  margin-top: 0.15rem;
+  font-size: 0.75rem;
+}
+
+.admin-page .admin-compact-stack {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+
+.admin-page .admin-compact-metrics {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+
+.admin-page .admin-filter-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.85rem;
+  border-radius: 1rem;
+  background: rgba(15, 23, 42, 0.46);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
+.admin-page .admin-users-table-card,
+.admin-page .admin-company-table-card {
+  overflow: hidden;
+}
+
+.admin-page .admin-users-panel {
+  padding: 1.1rem;
+}
+
+.admin-page .admin-user-summary {
+  position: relative;
+  overflow: hidden;
+  padding: 1rem;
+}
+
+.admin-page .admin-user-summary::after {
+  content: "";
+  position: absolute;
+  right: -18px;
+  top: -18px;
+  width: 90px;
+  height: 90px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.10) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.admin-page .admin-user-action-card {
+  padding: 1rem;
+}
+
+.admin-page .admin-user-panel-empty {
+  min-height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-page .admin-company-status-card {
+  padding: 0.85rem 1rem;
+  border-left-width: 4px;
+  border-left-style: solid;
+}
+
+.admin-page .admin-company-health-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+
+.admin-page .admin-chip-owners-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.65rem;
+}
+
+.admin-page .admin-company-table-card .table-premium td,
+.admin-page .admin-users-table-card .table-premium td {
+  vertical-align: middle;
+}
+
+.admin-page .admin-company-highlight {
+  position: relative;
+  overflow: hidden;
+}
+
+.admin-page .admin-company-highlight::after {
+  content: "";
+  position: absolute;
+  inset: auto auto -24px -12px;
+  width: 120px;
+  height: 120px;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.10) 0%, transparent 68%);
+  pointer-events: none;
+}
+
+.admin-page .admin-modal-card {
+  position: relative;
+  overflow: hidden;
+  padding: 1.4rem;
+}
+
+.admin-page .admin-modal-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(99,102,241,0.0), rgba(99,102,241,0.35), rgba(56,189,248,0.15), rgba(99,102,241,0.0));
+}
+
+.admin-page .admin-modal-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.admin-page .admin-modal-section {
+  padding: 0.95rem;
+}
+
+.admin-page .admin-plan-showcase {
+  padding: 1.25rem;
+}
+
+.admin-page .admin-plan-insight-strip {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.admin-page .admin-plan-insight-label {
+  color: #94a3b8;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.2rem;
+}
+
+.admin-page .admin-plan-insight-value {
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.admin-page .admin-plan-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #c7d2fe;
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(99, 102, 241, 0.18);
+}
+
+.admin-page .admin-plan-badge-soft {
+  color: #fde68a;
+  background: rgba(245, 158, 11, 0.10);
+  border-color: rgba(245, 158, 11, 0.16);
+}
+
+.admin-page .admin-plan-card {
+  position: relative;
+  overflow: hidden;
+  padding: 1.15rem;
+}
+
+.admin-page .admin-plan-card-top {
+  border-color: rgba(99, 102, 241, 0.24);
+  box-shadow: 0 22px 50px rgba(59, 130, 246, 0.08);
+}
+
+.admin-page .admin-plan-card-cheapest {
+  border-color: rgba(245, 158, 11, 0.18);
+}
+
+.admin-page .admin-plan-card-glow {
+  position: absolute;
+  inset: auto auto 0 -10%;
+  width: 60%;
+  height: 100px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.12) 0%, transparent 68%);
+  pointer-events: none;
+}
+
+.admin-page .admin-plan-card-feature-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.55rem;
+  margin-top: 0.9rem;
+}
+
+.admin-page .admin-plan-card-feature {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.admin-page .admin-plan-table-wrap {
+  overflow: hidden;
+}
+
+.admin-page .admin-plan-executive-list {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+.admin-page .admin-plan-executive-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.admin-page .admin-plan-executive-row:first-child {
+  border-top: 0;
+}
+
+.admin-page .admin-plan-executive-metrics {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+
+@media (min-width: 720px) {
+  .admin-page .admin-overview-kpi-grid,
+  .admin-page .admin-company-top-grid,
+  .admin-page .admin-plan-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-page .admin-modal-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-page .admin-company-health-grid,
+  .admin-page .admin-chip-owners-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-page .admin-plan-insight-strip,
+  .admin-page .admin-plan-executive-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1040px) {
+  .admin-page .admin-overview-kpi-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .admin-page .admin-overview-main-grid {
+    grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.65fr);
+    gap: 1.5rem;
+  }
+
+  .admin-page .admin-overview-secondary-grid {
+    grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+    gap: 1.5rem;
+  }
+
+  .admin-page .admin-users-main-grid {
+    grid-template-columns: minmax(0, 1.18fr) minmax(320px, 0.82fr);
+    gap: 1.5rem;
+  }
+
+  .admin-page .admin-company-main-grid {
+    grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+    gap: 1.5rem;
+  }
+
+  .admin-page .admin-plans-top-grid {
+    grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+    gap: 1.5rem;
+  }
+
+  .admin-page .admin-company-health-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .admin-page .admin-plan-executive-row {
+    grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.2fr);
+    align-items: center;
+  }
+
+  .admin-page .admin-plan-executive-metrics {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1280px) {
+  .admin-page .admin-company-top-grid,
+  .admin-page .admin-plan-card-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}

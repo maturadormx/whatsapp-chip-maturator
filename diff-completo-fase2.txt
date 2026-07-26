@@ -1,0 +1,150 @@
+DIFF COMPLETO — FASE 2 / MESSAGEGATEWAY
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-20
+
+OBJETIVO DA FASE 2
+Desacoplar o envio de mensagens do núcleo operacional por meio de uma abstração pura de gateway, preservando o comportamento validado da Fase 1.
+
+RESULTADO FINAL DA FASE 2
+- `MessageGateway` criado
+- contratos do gateway separados
+- `ExecutionService` desacoplado da implementação concreta
+- fake determinístico para testes
+- testes unitários e de integração dedicados
+- ADR, rastreabilidade e documentação consolidadas
+- baseline local pronta para registro como `m2-fase-2`
+
+VALIDAÇÃO FINAL
+- `pnpm test` -> `105/105` testes passando
+- `pnpm build` -> `OK`
+
+OBSERVAÇÃO IMPORTANTE
+O `git` continua indisponível neste ambiente de execução. Portanto:
+- a tag local `m2-fase-2` não foi criada aqui
+- a fase está concluída localmente em termos de código, testes e documentação
+- falta apenas registrar isso no Git local do usuário
+
+COMMIT 1 — CONTRATOS DO GATEWAY
+
+Arquivos criados:
+- `server/gateways/OutboundMessage.ts`
+- `server/gateways/GatewayResult.ts`
+- `server/gateways/MessageGateway.ts`
+- `server/gateways/index.ts`
+
+O que entrou:
+- `OutboundMessage`
+- `GatewayResult`
+- `GatewayStatus`
+- `MessageGateway`
+- `occurredAt`
+- `providerMessageId`
+- `providerMetadata`
+
+Objetivo alcançado:
+- criar a fronteira explícita entre domínio e transporte
+
+COMMIT 2 — INJEÇÃO NO EXECUTIONSERVICE
+
+Arquivos alterados:
+- `server/services/behavior/executionService.ts`
+- `server/services/behavior/executionService.test.ts`
+- `server/services/behavior/phase1OperationalIntegration.test.ts`
+- `tests/integration/m2-fase1-e2e.test.ts`
+
+O que mudou:
+- `ExecutionService` passou a depender de `MessageGateway`
+- foi criado um adapter padrão sobre a implementação legada
+- o orquestrador passou a conhecer o contrato, não o transporte concreto
+
+O que permaneceu igual:
+- retry
+- budget
+- ledger
+- estados
+- comportamento validado da Fase 1
+
+COMMIT 3 — TESTES DO GATEWAY
+
+Arquivos criados:
+- `tests/fakes/FakeMessageGateway.ts`
+- `tests/unit/gateways/MessageGateway.test.ts`
+- `tests/integration/gateway-execution.test.ts`
+
+O que entrou:
+- fake determinístico de gateway
+- testes unitários do contrato
+- testes de integração dedicados da Fase 2
+
+Casos cobertos:
+- `ACKED`
+- `FAILED`
+- `TIMEOUT`
+- delegação ao gateway
+- idempotência
+
+Impacto na suíte:
+- a base cresceu de `93` para `105` testes
+
+COMMIT 4 — DOCUMENTAÇÃO DA FASE 2
+
+Arquivos criados/alterados:
+- `docs/architecture/adr-002-message-gateway.md`
+- `docs/architecture/m2-traceability.md`
+- `docs/architecture/m2-fase2-gateway.md`
+
+Depois da consolidação final da fase, também ficaram atualizados:
+- `CHANGELOG.md`
+- `RELEASE-NOTES.md`
+- `fase2-fechamento-local.txt`
+
+O que a documentação formaliza:
+- decisão arquitetural do gateway
+- rastreabilidade da Fase 2
+- descrição consolidada da fase
+- readiness da baseline local `m2-fase-2`
+
+ARQUIVOS PRINCIPAIS DA FASE 2
+
+Código:
+- `server/gateways/OutboundMessage.ts`
+- `server/gateways/GatewayResult.ts`
+- `server/gateways/MessageGateway.ts`
+- `server/gateways/index.ts`
+- `server/services/behavior/executionService.ts`
+
+Testes:
+- `tests/fakes/FakeMessageGateway.ts`
+- `tests/unit/gateways/MessageGateway.test.ts`
+- `tests/integration/gateway-execution.test.ts`
+
+Documentação:
+- `docs/architecture/adr-002-message-gateway.md`
+- `docs/architecture/m2-traceability.md`
+- `docs/architecture/m2-fase2-gateway.md`
+- `CHANGELOG.md`
+- `RELEASE-NOTES.md`
+- `fase2-fechamento-local.txt`
+
+O QUE NÃO FOI FEITO DE PROPÓSITO
+- `MockGateway`
+- `Clock`
+- `Inbound`
+- `Event Store`
+- `Recovery`
+- integração concreta com provedor real além do adapter atual
+
+Motivo:
+- a fase foi mantida estritamente no escopo da abstração do gateway
+
+ESTADO FINAL DA FASE 2
+
+| Commit | Descrição | Status | Testes |
+|---|---|---|---|
+| 1 | Contratos | ✅ | 93 |
+| 2 | Injeção | ✅ | 93 |
+| 3 | Testes | ✅ | 105 |
+| 4 | Documentação | ✅ | 105 |
+
+VEREDITO
+A Fase 2 está concluída localmente em termos de implementação, validação e documentação. O `MessageGateway` agora existe como contrato, está injetado no `ExecutionService`, possui fake determinístico, tem cobertura unitária e de integração, e está formalizado por ADR e rastreabilidade. O próximo passo correto é registrar a tag local `m2-fase-2` no Git do usuário e só então abrir o próximo marco arquitetural.

@@ -1,0 +1,172 @@
+DIFF COMPLETO — FASE 2 / COMMIT 2 / INJEÇÃO DE MESSAGEGATEWAY NO EXECUTIONSERVICE
+Projeto: whatsapp-chip-maturator
+Data: 2026-07-20
+
+OBJETIVO DA RODADA
+Executar o `Commit 2` da Fase 2:
+
+- adaptar `ExecutionService` para depender de `MessageGateway`
+- preservar comportamento
+- não alterar retry, budget, ledger ou estados
+- ajustar os testes para usar gateway fake/stub
+
+RESULTADO FINAL
+- `ExecutionService` agora depende de um `MessageGateway` por injeção
+- o adapter padrão continua usando `sendMessage(...)` por baixo
+- os estados e a orquestração da Fase 1 foram preservados
+- a suíte completa continuou verde
+
+VALIDAÇÃO FINAL
+- `pnpm test` -> `93/93` testes passando
+- `pnpm build` -> `OK`
+
+ARQUIVOS ALTERADOS
+
+1. `server/services/behavior/executionService.ts`
+O que mudou:
+- o serviço deixou de depender de `sendExecutor`
+- passou a depender de:
+  - `gateway: MessageGateway`
+
+Novos imports:
+- `MessageGateway`
+- `GatewayResult`
+- `OutboundMessage`
+
+O que foi introduzido:
+- `defaultMessageGateway`
+
+Papel do adapter padrão:
+- traduz o contrato atual de `sendMessage(...)` para o contrato novo do gateway
+- monta um `OutboundMessage`
+- devolve `GatewayResult`
+
+Importante:
+- a implementação padrão continua usando `sendMessage(...)`
+- ou seja, não houve troca de infraestrutura real ainda
+- houve apenas isolamento do contrato
+
+Mudança estrutural principal:
+- antes:
+  - `ExecutionService` falava diretamente com um executor concreto
+- agora:
+  - `ExecutionService` fala com `MessageGateway`
+  - o adapter padrão encapsula a chamada concreta
+
+Interpretação do resultado do gateway:
+- `ACKED` -> segue fluxo normal e faz `commitBudget`
+- `FAILED` -> vira erro operacional
+- `TIMEOUT` -> vira erro operacional `GATEWAY_TIMEOUT`
+
+O que permaneceu igual:
+- reserva de budget
+- release de budget
+- commit de budget
+- `nextRetryAt`
+- `recoverable`
+- `maxAttempts`
+- `ledger`
+- dispatcher
+- transições:
+  - `PENDING`
+  - `SENDING`
+  - `ACKED`
+  - `FAILED`
+  - `RETRYING`
+
+Efeito prático:
+- o orquestrador agora conhece uma abstração de transporte, não a implementação concreta
+
+2. `server/services/behavior/executionService.test.ts`
+O que mudou:
+- os testes deixaram de mockar `sendExecutor`
+- passaram a usar:
+  - `gateway.send(...)`
+
+O que foi validado:
+- sucesso com `GatewayResult.status = ACKED`
+- falha com rejeição do gateway
+- chamadas de budget e ledger continuam iguais
+- dispatcher continua com as mesmas transições
+
+Efeito prático:
+- a suíte do `ExecutionService` já testa o novo ponto de injeção
+
+3. `server/services/behavior/phase1OperationalIntegration.test.ts`
+O que mudou:
+- a harness passou a fornecer:
+  - `gateway.send(...)`
+  em vez de `sendExecutor`
+
+O que foi preservado:
+- falha na primeira tentativa
+- retry recuperável
+- sucesso na segunda tentativa
+- budget e ledger coerentes
+
+Efeito prático:
+- a validação integrada da Fase 1 continua valendo sobre o `ExecutionService` já desacoplado
+
+4. `tests/integration/m2-fase1-e2e.test.ts`
+O que mudou:
+- o E2E arquitetural foi ajustado para o novo contrato
+- a harness agora usa `gateway.send(...)`
+
+O que foi preservado:
+- cenário 1: envio com sucesso
+- cenário 2: falha + release
+- cenário 3: retry com novo attempt
+- cenário 4: budget insuficiente
+- cenário 5: idempotência
+
+Efeito prático:
+- o PR #7 continua válido mesmo com o núcleo já preparado para a Fase 2
+
+O QUE NÃO MUDOU DE PROPÓSITO
+- `RetryService`
+- `BudgetReservationService`
+- `Execution Ledger`
+- `Control Center`
+- documentação da Fase 2
+- contratos do gateway criados no Commit 1
+
+Motivo:
+- esta rodada foi estritamente o `Commit 2`
+- sem misturar testes novos de gateway dedicados
+- sem documentação da Fase 2
+- sem abrir implementação concreta
+
+GANHO ARQUITETURAL
+Antes:
+- `ExecutionService` ainda carregava dependência direta do envio concreto
+
+Depois:
+- `ExecutionService` depende de:
+  - `MessageGateway`
+- a implementação concreta fica atrás de um adapter padrão
+
+Isso materializa a fronteira correta:
+
+ExecutionService
+        │
+        ▼
+MessageGateway
+        │
+        ▼
+Implementação concreta
+
+Isso prepara:
+- `MockGateway`
+- `WhatsAppGateway`
+- outros transports futuros
+
+sem reabrir a orquestração do domínio.
+
+LISTA CONSOLIDADA DOS ARQUIVOS IMPACTADOS
+- `server/services/behavior/executionService.ts`
+- `server/services/behavior/executionService.test.ts`
+- `server/services/behavior/phase1OperationalIntegration.test.ts`
+- `tests/integration/m2-fase1-e2e.test.ts`
+
+VEREDITO
+Esta rodada conclui corretamente o `Commit 2` da Fase 2: o `ExecutionService` passou a depender de `MessageGateway` por injeção, mantendo o comportamento da Fase 1 intacto. O próximo passo natural continua sendo o `Commit 3`: testes específicos do contrato do gateway e testes de integração dedicados da Fase 2.

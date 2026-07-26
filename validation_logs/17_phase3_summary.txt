@@ -1,0 +1,8 @@
+db_push_generated_but_migrate_failed_on_existing_observation_tables
+db_push_workaround=drizzle-kit push --config drizzle.config.ts --verbose
+schema_materialized_tables=37
+backend_port=3004
+ready_driver=mysql
+ready_status=200
+health_status=200
+live_status=200

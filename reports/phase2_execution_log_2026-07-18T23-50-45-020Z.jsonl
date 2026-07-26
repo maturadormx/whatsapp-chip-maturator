@@ -1,0 +1,8 @@
+{"step":"pre_reconciliation","generated_at":"2026-07-18T23:50:45.020Z","divergences":10}
+{"step":"first_pass_migration","migrated":10,"already_migrated":0}
+{"step":"second_pass_idempotency","migrated":0,"already_migrated":10}
+{"step":"projection_cycle_1","worker":"chip-state-projection","processed_offsets":12,"projected_chips":10,"last_offset":12}
+{"step":"projection_cycle_2","worker":"chip-state-projection","processed_offsets":0,"projected_chips":0,"last_offset":12}
+{"step":"migration_evidence","created":10}
+{"step":"audit_validation","audited":10}
+{"step":"post_reconciliation","divergences":2}
