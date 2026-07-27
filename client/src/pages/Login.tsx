@@ -16,11 +16,22 @@ export default function Login() {
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const [localName, setLocalName] = useState("");
   const utils = trpc.useUtils();
-  const { data: localStatus } = trpc.auth.localStatus.useQuery();
+  const {
+    data: localStatus,
+    isLoading: isLocalStatusLoading,
+    isFetching: isLocalStatusFetching,
+    isError: isLocalStatusError,
+  } = trpc.auth.localStatus.useQuery(undefined, {
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
   const localLoginMutation = trpc.auth.localLogin.useMutation();
   const isPreviewMode =
     typeof window !== "undefined" &&
     new URLSearchParams(window.location.search).get("preview") === "1";
+  const localAuthEnabled = localStatus?.enabled === true;
+  const oauthOnlyMode = localStatus?.enabled === false;
+  const isResolvingLocalStatus = !isPreviewMode && (isLocalStatusLoading || isLocalStatusFetching);
 
   useEffect(() => {
     if (isAuthenticated && !isPreviewMode) {
@@ -61,16 +72,20 @@ export default function Login() {
     }
   };
 
-  if (localStatus?.enabled && (loading || localLoginMutation.isPending)) {
+  if (isResolvingLocalStatus || (localAuthEnabled && (loading || localLoginMutation.isPending))) {
     return (
       <div className="min-h-screen bg-black text-white overflow-hidden font-poppins flex items-center justify-center px-4">
         <div className="w-full max-w-xl rounded-3xl border border-cyan-500/20 bg-white/[0.05] backdrop-blur-xl p-10 text-center shadow-[0_0_60px_rgba(15,23,42,0.45)]">
           <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl border border-cyan-500/40 bg-gradient-to-br from-cyan-500/20 to-blue-500/20">
             <Zap className="text-cyan-400" size={30} />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-3">Entrando no modo local</h1>
+          <h1 className="text-3xl font-bold text-white mb-3">
+            {isResolvingLocalStatus ? "Verificando acesso" : "Entrando no modo local"}
+          </h1>
           <p className="text-gray-300 leading-7">
-            Preparando sua sessão local e carregando sua área de acesso. Essa tela deve aparecer só por alguns instantes.
+            {isResolvingLocalStatus
+              ? "Estamos validando a forma correta de autenticação para este ambiente. Essa tela deve aparecer só por alguns instantes."
+              : "Preparando sua sessão local e carregando sua área de acesso. Essa tela deve aparecer só por alguns instantes."}
           </p>
         </div>
       </div>
@@ -166,7 +181,7 @@ export default function Login() {
               </p>
             </div>
 
-            {localStatus?.enabled && authMode === "register" && (
+            {localAuthEnabled && authMode === "register" && (
               <div className="mb-5 space-y-2">
                 <label className="text-sm text-slate-300">Nome de acesso</label>
                 <Input
@@ -181,7 +196,7 @@ export default function Login() {
               </div>
             )}
 
-            {!localStatus?.enabled && (
+            {oauthOnlyMode && (
               <Button
                 onClick={handleLogin}
                 disabled={!isOAuthConfigured}
@@ -191,7 +206,7 @@ export default function Login() {
               </Button>
             )}
 
-            {localStatus?.enabled && (
+            {localAuthEnabled && (
               <Button
                 onClick={() => handleLocalLogin()}
                 disabled={localLoginMutation.isPending || (authMode === "register" && localName.trim().length < 2)}
@@ -206,10 +221,18 @@ export default function Login() {
               </Button>
             )}
 
-            {!localStatus?.enabled && !isOAuthConfigured && (
+            {oauthOnlyMode && !isOAuthConfigured && (
               <div className="rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-4 mb-4">
                 <p className="text-center text-yellow-300 text-sm">
                   OAuth ainda não configurado neste ambiente. Defina `VITE_OAUTH_PORTAL_URL` e `VITE_APP_ID`.
+                </p>
+              </div>
+            )}
+
+            {isLocalStatusError && (
+              <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4 mb-4">
+                <p className="text-center text-red-300 text-sm">
+                  Não foi possível validar o modo de acesso deste ambiente. Recarregue a página e tente novamente.
                 </p>
               </div>
             )}
