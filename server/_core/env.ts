@@ -1,5 +1,22 @@
 import "dotenv/config";
 
+function isInvalidRedisUrl(url: string | null | undefined) {
+  if (!url) return true;
+
+  const normalized = url.trim();
+  if (!normalized) return true;
+  if (normalized === "redis") return true;
+
+  try {
+    const parsed = new URL(normalized);
+    if (parsed.hostname === "redis") return true;
+  } catch {
+    return true;
+  }
+
+  return false;
+}
+
 export const ENV = {
   get appId() {
     return process.env.VITE_APP_ID ?? "";
@@ -27,6 +44,9 @@ export const ENV = {
   },
   get redisUrl() {
     return process.env.REDIS_URL ?? "";
+  },
+  get redisEnabled() {
+    return !isInvalidRedisUrl(this.redisUrl);
   },
   get observationQueueName() {
     return process.env.OBSERVATION_QUEUE_NAME ?? "observation-runtime";

@@ -11,13 +11,13 @@ export async function getDeploymentProfile() {
     nodeId: ENV.clusterNodeId,
     role: ENV.clusterNodeRole,
     distributedRuntimeEnabled: ENV.distributedRuntimeEnabled,
-    redisUrlConfigured: Boolean(ENV.redisUrl),
+    redisUrlConfigured: ENV.redisEnabled,
     rollingUpdate,
     recommended: {
       docker: true,
       kubernetes: true,
       horizontalScaling: true,
-      sharedRedis: Boolean(ENV.redisUrl),
+      sharedRedis: ENV.redisEnabled,
     },
   };
 }

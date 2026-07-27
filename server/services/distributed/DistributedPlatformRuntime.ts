@@ -3,13 +3,21 @@ import { getClusterManager } from "./ClusterManager";
 import { getDistributedSessionManager } from "./DistributedSessionManager";
 import { getGlobalHealthMonitor } from "./GlobalHealthMonitor";
 import { getRedisPubSubEventBus } from "./RedisPubSubEventBus";
+import { getRedisCommandClient } from "./RedisClient";
 
 class DistributedPlatformRuntime {
   private started = false;
   private syncTimer: NodeJS.Timeout | null = null;
 
   async start() {
-    if (this.started || !ENV.distributedRuntimeEnabled) return;
+    if (this.started || !ENV.distributedRuntimeEnabled || !ENV.redisEnabled) return;
+
+    const redis = await getRedisCommandClient();
+    if (!redis) {
+      console.warn("[DistributedRuntime] Redis indisponível. Runtime distribuído desabilitado.");
+      return;
+    }
+
     this.started = true;
 
     await getRedisPubSubEventBus().start();

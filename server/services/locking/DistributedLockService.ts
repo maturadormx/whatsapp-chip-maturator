@@ -10,7 +10,7 @@ class DistributedLockService {
   private redis: any | null = null;
 
   private async getRedis() {
-    if (!ENV.redisUrl) return null;
+    if (!ENV.redisEnabled) return null;
     if (this.redis) return this.redis;
 
     try {
@@ -18,10 +18,19 @@ class DistributedLockService {
       this.redis = new IORedis(ENV.redisUrl, {
         maxRetriesPerRequest: 1,
         lazyConnect: true,
+        enableOfflineQueue: false,
+        retryStrategy: () => null,
+        reconnectOnError: () => false,
       });
-      await this.redis.connect().catch(() => null);
+      this.redis.on("error", (err: Error) => {
+        console.warn("[DistributedLockService] Evento de erro Redis:", err.message);
+      });
+      await this.redis.connect();
       return this.redis;
-    } catch {
+    } catch (error) {
+      console.warn("[DistributedLockService] Redis indisponível. Fallback para memória:", error);
+      this.redis?.disconnect?.();
+      this.redis = null;
       return null;
     }
   }

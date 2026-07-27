@@ -12,11 +12,13 @@ class RedisPubSubEventBus {
   private started = false;
 
   async start() {
-    if (this.started || !ENV.redisUrl) return;
+    if (this.started || !ENV.redisEnabled) return;
     this.started = true;
 
     const subscriber = await getRedisSubscriberClient();
     if (!subscriber) return;
+
+    const commandClient = await getRedisCommandClient();
 
     await subscriber.subscribe(ENV.redisEventBusChannel);
     subscriber.on("message", async (channel: string, message: string) => {
@@ -30,18 +32,18 @@ class RedisPubSubEventBus {
       }).catch(() => null);
     });
 
-    getInternalEventBus().subscribe("*", async (event) => {
-      if (event.source.startsWith("redis:")) return;
-      const client = await getRedisCommandClient();
-      if (!client) return;
-      await client.publish(
-        ENV.redisEventBusChannel,
-        JSON.stringify({
-          nodeId: ENV.clusterNodeId,
-          event,
-        } satisfies DistributedEnvelope),
-      );
-    });
+    if (commandClient) {
+      getInternalEventBus().subscribe("*", async (event) => {
+        if (event.source.startsWith("redis:")) return;
+        await commandClient.publish(
+          ENV.redisEventBusChannel,
+          JSON.stringify({
+            nodeId: ENV.clusterNodeId,
+            event,
+          } satisfies DistributedEnvelope),
+        );
+      });
+    }
 
     await recordAuditEvent({
       engine: "RedisPubSubEventBus",

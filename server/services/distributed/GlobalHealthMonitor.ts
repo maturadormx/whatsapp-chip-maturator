@@ -17,8 +17,9 @@ class GlobalHealthMonitor {
       getRedisCommandClient(),
     ]);
 
+    const redisEnabled = Boolean(redis);
     let redisPingMs: number | null = null;
-    if (redis) {
+    if (redisEnabled && redis) {
       const started = Date.now();
       await redis.ping().catch(() => null);
       redisPingMs = Date.now() - started;
@@ -38,7 +39,7 @@ class GlobalHealthMonitor {
         degradedWorkers: workers.filter((worker) => worker.status === "degraded").length,
       },
       redis: {
-        enabled: Boolean(redis),
+        enabled: redisEnabled,
         pingMs: redisPingMs,
       },
       sessions: {

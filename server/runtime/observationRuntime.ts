@@ -23,7 +23,7 @@ function isMysqlDriverEnabled() {
 }
 
 function isQueueEnabled() {
-  return ENV.observationQueueEnabled && Boolean(ENV.redisUrl);
+  return ENV.observationQueueEnabled && ENV.redisEnabled;
 }
 
 export function createObservationRuntime() {
