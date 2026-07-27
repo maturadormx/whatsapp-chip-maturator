@@ -1,26 +1,28 @@
-FROM node:22-bookworm-slim AS builder
+# Use a imagem base oficial do Node
+FROM node:20-slim
 
+# Define o diretório de trabalho
 WORKDIR /app
 
+# Copia os arquivos de manifesto
 COPY package*.json ./
+COPY pnpm-lock.yaml ./
+
+# --> MUDANÇA 1: Instala e FIXA a versão do NPM
+RUN npm install -g npm@10.9.4
+
+# --> MUDANÇA 2: Instala as dependências incluindo as opcionais
+# O --include=optional garante que o Rollup tente baixar os binários para o Linux
 RUN npm ci --include=optional
 
+# Copia o resto do código
 COPY . .
 
+# Executa o build
 RUN npm run build
 
-FROM node:22-bookworm-slim
-
-WORKDIR /app
-
-COPY package*.json ./
-RUN npm ci --omit=dev --include=optional
-
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/scripts ./scripts
-
-ENV NODE_ENV=production
-
+# Expõe a porta (se for uma aplicação web)
 EXPOSE 3000
 
-CMD ["npm","run","start"]
+# Comando para iniciar a aplicação
+CMD ["npm", "start"]
