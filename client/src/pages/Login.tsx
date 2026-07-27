@@ -1,6 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { isOAuthConfigured, startLogin } from "@/const";
 import { getDefaultRouteForRole } from "@/lib/access";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
@@ -30,7 +29,6 @@ export default function Login() {
     typeof window !== "undefined" &&
     new URLSearchParams(window.location.search).get("preview") === "1";
   const localAuthEnabled = localStatus?.enabled === true;
-  const oauthOnlyMode = localStatus?.enabled === false;
   const isResolvingLocalStatus = !isPreviewMode && (isLocalStatusLoading || isLocalStatusFetching);
 
   useEffect(() => {
@@ -38,20 +36,6 @@ export default function Login() {
       setLocation(getDefaultRouteForRole(user?.role));
     }
   }, [isAuthenticated, isPreviewMode, setLocation, user?.role]);
-
-  const handleLogin = () => {
-    try {
-      setLoginError(null);
-      startLogin();
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "OAuth não configurado para este ambiente.";
-      setLoginError(message);
-      sonnerToast.error(message);
-    }
-  };
 
   const handleLocalLogin = async (silent = false) => {
     try {
@@ -196,16 +180,6 @@ export default function Login() {
               </div>
             )}
 
-            {oauthOnlyMode && (
-              <Button
-                onClick={handleLogin}
-                disabled={!isOAuthConfigured}
-                className="w-full py-6 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-black font-bold text-lg rounded-2xl transition transform hover:scale-[1.02] shadow-lg shadow-cyan-500/30 mb-6"
-              >
-                {authMode === "register" ? "Cadastrar com Manus" : "Entrar com Manus"}
-              </Button>
-            )}
-
             {localAuthEnabled && (
               <Button
                 onClick={() => handleLocalLogin()}
@@ -221,18 +195,18 @@ export default function Login() {
               </Button>
             )}
 
-            {oauthOnlyMode && !isOAuthConfigured && (
-              <div className="rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-4 mb-4">
-                <p className="text-center text-yellow-300 text-sm">
-                  OAuth ainda não configurado neste ambiente. Defina `VITE_OAUTH_PORTAL_URL` e `VITE_APP_ID`.
-                </p>
-              </div>
-            )}
-
             {isLocalStatusError && (
               <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4 mb-4">
                 <p className="text-center text-red-300 text-sm">
                   Não foi possível validar o modo de acesso deste ambiente. Recarregue a página e tente novamente.
+                </p>
+              </div>
+            )}
+
+            {!isLocalStatusError && !localAuthEnabled && (
+              <div className="rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-4 mb-4">
+                <p className="text-center text-yellow-300 text-sm">
+                  O login local não está habilitado neste ambiente. Ative `LOCAL_AUTH_ENABLED=true` no Railway.
                 </p>
               </div>
             )}
