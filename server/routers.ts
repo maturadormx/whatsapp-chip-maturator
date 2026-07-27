@@ -22,6 +22,12 @@ export const appRouter = router({
     localStatus: publicProcedure.query(() => ({
       enabled: ENV.localAuthEnabled,
       name: ENV.localAuthName,
+      debug: {
+        LOCAL_AUTH_ENABLED: process.env.LOCAL_AUTH_ENABLED,
+        LOCAL_AUTH_NAME: process.env.LOCAL_AUTH_NAME,
+        LOCAL_AUTH_OPEN_ID: process.env.LOCAL_AUTH_OPEN_ID,
+        NODE_ENV: process.env.NODE_ENV,
+      },
     })),
     localLogin: publicProcedure
       .input(
