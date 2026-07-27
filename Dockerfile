@@ -1,40 +1,53 @@
-# ---------- BUILD ----------
+# ==========================
+# BUILD STAGE
+# ==========================
 FROM node:22-bookworm-slim AS builder
+
+# DEBUG
+RUN echo "===================================" \
+ && echo "USING NEW DOCKERFILE" \
+ && echo "===================================" \
+ && node -v \
+ && npm -v
 
 WORKDIR /app
 
 # Atualiza o npm
 RUN npm install -g npm@10.9.4
 
-# Copia apenas os manifests primeiro
+# Copia apenas manifests primeiro
 COPY package*.json ./
 
-# Instala TODAS as dependências
-RUN npm ci
-
-# Instala explicitamente o binário Linux do Rollup
-RUN npm install @rollup/rollup-linux-x64-gnu@4.62.2 --no-save
+# Instala dependências
+RUN npm ci --include=optional
 
 # Copia o restante do projeto
 COPY . .
 
-# Build
+# Build da aplicação
 RUN npm run build
 
 
-# ---------- RUNTIME ----------
+# ==========================
+# RUNTIME STAGE
+# ==========================
 FROM node:22-bookworm-slim
+
+# DEBUG
+RUN node -v && npm -v
 
 WORKDIR /app
 
+# Atualiza o npm
 RUN npm install -g npm@10.9.4
 
+# Copia manifests
 COPY package*.json ./
 
-# Apenas dependências de produção
-RUN npm ci --omit=dev
+# Instala apenas dependências de produção
+RUN npm ci --omit=dev --include=optional
 
-# Copia o build
+# Copia somente o necessário
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/scripts ./scripts
 
