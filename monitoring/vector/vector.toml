@@ -1,0 +1,46 @@
+[api]
+enabled = true
+address = "0.0.0.0:8686"
+
+[sources.railway_logs]
+type = "http_server"
+address = "0.0.0.0:5140"
+encoding = "json"
+path = "/"
+method = "post"
+strict_path = false
+
+[transforms.normalize]
+type = "remap"
+inputs = ["railway_logs"]
+source = '''
+.service = to_string(.service) ?? "whatsapp-chip-maturator"
+.env = to_string(.env) ?? "production"
+.level = downcase(to_string(.level) ?? "info")
+.event = to_string(.event) ?? "app.log"
+if exists(.chipId) { .chipId = to_string(.chipId) ?? "unknown" }
+if exists(.userId) { .userId = to_string(.userId) ?? "unknown" }
+if exists(.status) { .status = to_string(.status) ?? "unknown" }
+if exists(.connectionState) { .connectionState = to_string(.connectionState) ?? "unknown" }
+if !exists(.timestamp) { .timestamp = now() }
+'''
+
+[sinks.loki]
+type = "loki"
+inputs = ["normalize"]
+endpoint = "http://loki:3100"
+encoding.codec = "json"
+healthcheck.enabled = true
+labels.service = "{{ service }}"
+labels.env = "{{ env }}"
+labels.level = "{{ level }}"
+labels.event = "{{ event }}"
+labels.chipId = "{{ chipId }}"
+labels.userId = "{{ userId }}"
+labels.status = "{{ status }}"
+labels.connectionState = "{{ connectionState }}"
+
+[sinks.console]
+type = "console"
+inputs = ["normalize"]
+encoding.codec = "json"

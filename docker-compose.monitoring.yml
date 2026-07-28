@@ -1,0 +1,53 @@
+services:
+  loki:
+    image: grafana/loki:2.9.8
+    container_name: wmse-loki
+    command: -config.file=/etc/loki/local-config.yaml
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./monitoring/loki/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki-data:/loki
+    networks:
+      - monitoring
+
+  grafana:
+    image: grafana/grafana:10.4.6
+    container_name: wmse-grafana
+    depends_on:
+      - loki
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    networks:
+      - monitoring
+
+  vector:
+    image: timberio/vector:0.38.0-debian
+    container_name: wmse-vector
+    depends_on:
+      - loki
+    command: ["--config", "/etc/vector/vector.toml"]
+    ports:
+      - "8686:8686"
+      - "5140:5140"
+    volumes:
+      - ./monitoring/vector/vector.toml:/etc/vector/vector.toml:ro
+    networks:
+      - monitoring
+
+volumes:
+  loki-data:
+  grafana-data:
+
+networks:
+  monitoring:
+    driver: bridge

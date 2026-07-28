@@ -20,6 +20,9 @@
     "test": "node scripts/operational/test.mjs",
     "test:integration:observation": "vitest run server/infrastructure/persistence/mysql/*.integration.test.ts",
     "db:push": "node scripts/operational/bootstrap-db.mjs",
+    "local:monitoring:up": "docker compose -f docker-compose.monitoring.yml up -d",
+    "local:monitoring:down": "docker compose -f docker-compose.monitoring.yml down",
+    "local:monitoring:logs": "docker compose -f docker-compose.monitoring.yml logs -f",
     "local:db:up": "docker compose -f docker-compose.local.yml up -d",
     "local:db:down": "docker compose -f docker-compose.local.yml down",
     "local:db:logs": "docker compose -f docker-compose.local.yml logs -f mysql"
