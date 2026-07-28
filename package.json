@@ -7,6 +7,7 @@
     "dev": "node scripts/operational/dev.mjs",
     "build": "node scripts/operational/build.mjs",
     "start": "node scripts/operational/start.mjs",
+    "db:bootstrap": "node scripts/operational/bootstrap-db.mjs",
     "check": "tsc --noEmit",
     "validate:architecture": "tsx scripts/maintenance/validate-architecture-boundaries.ts",
     "validate:fitness": "tsx scripts/maintenance/validate-architecture-fitness.ts",
